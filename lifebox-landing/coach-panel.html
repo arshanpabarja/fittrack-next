@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex" /><title>پنل مربی | لایف‌باکس</title><link rel="stylesheet" href="styles.css" /></head>
+  <body class="app-body">
+    <div class="app-shell" data-coach-panel>
+      <aside class="app-sidebar">
+        <a class="logo sidebar-logo" href="index.html"><img class="logo-image" src="assets/gym-logo.png" alt="" /><span><b>LIFEBOX</b><small>پنل مربی</small></span></a>
+        <nav class="side-nav" aria-label="منوی پنل مربی">
+          <a class="active" href="#overview">نمای کلی</a>
+          <a href="#profile">پروفایل من</a>
+          <a href="#program-editor">ثبت برنامه</a>
+          <a href="#programs">برنامه‌های من</a>
+        </nav>
+        <div class="sidebar-bottom"><a href="index.html">بازگشت به سایت</a><button type="button" data-logout>خروج از حساب</button></div>
+      </aside>
+
+      <main class="app-main coach-main">
+        <header class="app-topbar">
+          <div><span>مدیریت تمرین‌ها</span><h1>پنل مربی</h1></div>
+          <div class="account-summary"><div><strong data-coach-name>مربی لایف‌باکس</strong><span data-coach-mobile>—</span></div><span class="account-avatar" aria-hidden="true">CO</span></div>
+        </header>
+
+        <section class="coach-metrics" id="overview">
+          <article><span>پلن‌های مجاز</span><strong data-coach-plan-count>۰</strong><p>توسط مدیریت FitTrack تعیین شده</p></article>
+          <article><span>ورزشکاران قابل مدیریت</span><strong data-coach-member-count>۰</strong><p>اعضای فعال پلن‌های شما</p></article>
+          <article><span>برنامه‌های ثبت‌شده</span><strong data-coach-program-count>۰</strong><p>آخرین نسخه هر ورزشکار</p></article>
+        </section>
+
+        <section class="coach-panel-section" id="profile">
+          <div class="app-section-head"><div><span>اطلاعات عمومی</span><h2>پروفایل مربی</h2></div><p>این اطلاعات را خودت در سایت تکمیل می‌کنی؛ رمز و دسترسی پلن‌ها فقط از FitTrack تغییر می‌کنند.</p></div>
+          <form class="coach-profile-form" data-coach-profile-form novalidate>
+            <div class="form-message" data-form-message role="alert" tabindex="-1"></div>
+            <div class="field"><label for="coach-full-name">نام و نام خانوادگی</label><input class="field-input" id="coach-full-name" name="fullName" autocomplete="name" aria-describedby="coach-full-name-error" /><span class="field-error" id="coach-full-name-error" data-error-for="fullName"></span></div>
+            <div class="field"><label for="coach-specialty">تخصص</label><input class="field-input" id="coach-specialty" name="specialty" placeholder="مثلاً بدنسازی و افزایش قدرت" aria-describedby="coach-specialty-error" /><span class="field-error" id="coach-specialty-error" data-error-for="specialty"></span></div>
+            <div class="field"><label for="coach-bio">معرفی کوتاه <small>(اختیاری)</small></label><textarea class="field-input" id="coach-bio" name="bio" maxlength="1500" placeholder="سابقه، رویکرد تمرینی و توضیح کوتاه…"></textarea></div>
+            <div class="coach-plan-access"><span>پلن‌های مجاز شما</span><div data-coach-plans>—</div></div>
+            <button class="button button-dark" type="submit">ذخیره پروفایل</button>
+          </form>
+        </section>
+
+        <section class="coach-panel-section" id="program-editor">
+          <div class="app-section-head"><div><span>برنامه تمرینی</span><h2>ثبت یا ویرایش برنامه</h2></div><p>فقط ورزشکارانی نمایش داده می‌شوند که عضویت فعال و پلن مجاز برای شما دارند.</p></div>
+          <form class="coach-program-form" data-coach-program-form novalidate>
+            <div class="form-message" data-form-message role="alert" tabindex="-1"></div>
+            <div class="field"><label for="program-member">ورزشکار</label><select class="field-input" id="program-member" name="memberId" aria-describedby="program-member-error"><option value="">یک ورزشکار را انتخاب کنید</option></select><span class="field-error" id="program-member-error" data-error-for="memberId"></span></div>
+            <div class="field"><label for="program-title">عنوان برنامه</label><input class="field-input" id="program-title" name="title" placeholder="مثلاً برنامه افزایش قدرت — ماه اول" aria-describedby="program-title-error" /><span class="field-error" id="program-title-error" data-error-for="title"></span></div>
+            <div class="program-settings-grid">
+              <div class="field"><label for="program-duration-weeks">مدت برنامه</label><span class="field-help">تعداد هفته‌هایی که این برنامه اجرا می‌شود.</span><div class="number-field"><input class="field-input numeric-input" id="program-duration-weeks" name="durationWeeks" type="number" inputmode="numeric" min="1" max="12" value="4" aria-describedby="program-duration-error" /><span>هفته</span></div><span class="field-error" id="program-duration-error" data-error-for="durationWeeks"></span></div>
+              <div class="field"><label for="program-training-days">تعداد روز تمرین در هفته</label><span class="field-help">با تغییر عدد، روزهای تمرین پایین اضافه یا کم می‌شوند.</span><div class="number-field"><input class="field-input numeric-input" id="program-training-days" name="trainingDays" type="number" inputmode="numeric" min="2" max="7" value="3" aria-describedby="program-days-error" /><span>روز</span></div><span class="field-error" id="program-days-error" data-error-for="trainingDays"></span></div>
+            </div>
+            <fieldset class="weekly-program-fieldset">
+              <legend>روزها و حرکت‌های برنامه</legend>
+              <p class="field-help">برای هر روز، روز هفته را انتخاب کن و ست، تکرار و استراحت هر حرکت را در همان کادر بنویس.</p>
+              <div class="training-days-list" data-training-days></div>
+            </fieldset>
+            <button class="button button-primary" type="submit">ذخیره برنامه ورزشکار</button>
+          </form>
+        </section>
+
+        <section class="coach-panel-section" id="programs">
+          <div class="users-head"><div><span>برنامه‌های جاری</span><h2>ورزشکاران من</h2></div></div>
+          <div class="table-wrap">
+            <table class="users-table coach-programs-table"><thead><tr><th>ورزشکار</th><th>عنوان برنامه</th><th>آخرین تغییر</th><th>عملیات</th></tr></thead><tbody data-coach-programs-body></tbody></table>
+            <p class="table-empty" data-coach-programs-empty hidden>هنوز برنامه‌ای ثبت نشده است.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>

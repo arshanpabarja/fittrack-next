@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="description" content="ثبت‌نام آنلاین باشگاه لایف‌باکس" /><title>ثبت‌نام | لایف‌باکس</title><link rel="stylesheet" href="styles.css" /></head>
+  <body class="auth-body">
+    <main class="auth-layout">
+      <section class="auth-form-panel">
+        <a class="logo" href="index.html"><img class="logo-image" src="assets/gym-logo.png" alt="" /><span><b>LIFEBOX</b><small>بازگشت به صفحه اصلی</small></span></a>
+        <div class="auth-form-wrap signup-wrap">
+          <p class="overline"><span></span> فعال‌سازی پنل اعضا</p>
+          <h1>حساب FitTrack خودت را فعال کن.</h1>
+          <p>شماره موبایلی را وارد کن که پذیرش باشگاه برای عضویتت ثبت کرده است.</p>
+          <form class="auth-form" id="signup-form" novalidate>
+            <div class="form-message" data-form-message role="alert" tabindex="-1"></div>
+            <div class="field"><label for="full-name">نام و نام خانوادگی</label><input class="field-input" id="full-name" name="fullName" type="text" autocomplete="name" aria-describedby="full-name-error" /><span class="field-error" id="full-name-error" data-error-for="fullName"></span></div>
+            <div class="field"><label for="signup-mobile">شماره موبایل</label><span class="field-help">این شماره با پرونده عضویت شما در FitTrack تطبیق داده می‌شود.</span><input class="field-input" id="signup-mobile" name="mobile" type="tel" inputmode="numeric" autocomplete="tel" placeholder="09123456789" aria-describedby="signup-mobile-error" /><span class="field-error" id="signup-mobile-error" data-error-for="mobile"></span></div>
+            <div class="field"><label for="national-id">کد ملی</label><span class="field-help">کد ملی ۱۰ رقمی برای تطبیق حضوری استفاده می‌شود.</span><input class="field-input" id="national-id" name="nationalId" type="text" inputmode="numeric" maxlength="10" autocomplete="off" aria-describedby="national-id-error" /><span class="field-error" id="national-id-error" data-error-for="nationalId"></span></div>
+            <div class="field"><label for="member-address">آدرس محل سکونت</label><textarea class="field-input field-textarea" id="member-address" name="address" rows="3" autocomplete="street-address" aria-describedby="address-error"></textarea><span class="field-error" id="address-error" data-error-for="address"></span></div>
+            <div class="field"><label for="membership-plan">پلن عضویت</label><span class="field-help">مبلغ نهایی هنگام مراجعه و پیش از ثبت چهره پرداخت می‌شود.</span><select class="field-input" id="membership-plan" name="planId" aria-describedby="plan-error"><option value="">در حال دریافت پلن‌ها…</option></select><span class="field-error" id="plan-error" data-error-for="planId"></span></div>
+            <div class="field"><div class="field-label-row"><label for="signup-password">رمز عبور</label><button type="button" data-toggle-password="signup-password" aria-pressed="false">نمایش</button></div><span class="field-help">حداقل ۱۰ کاراکتر، شامل حرف و عدد</span><input class="field-input" id="signup-password" name="password" type="password" autocomplete="new-password" aria-describedby="signup-password-error" /><span class="field-error" id="signup-password-error" data-error-for="password"></span></div>
+            <div class="field"><label for="confirm-password">تکرار رمز عبور</label><input class="field-input" id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" aria-describedby="confirm-password-error" /><span class="field-error" id="confirm-password-error" data-error-for="confirmPassword"></span></div>
+            <div class="check-field"><input id="terms" name="terms" type="checkbox" aria-describedby="terms-error" /><label for="terms">قوانین عضویت و شرایط استفاده از باشگاه را می‌پذیرم.</label><span class="field-error" id="terms-error" data-error-for="terms"></span></div>
+            <button class="button button-dark button-full" type="submit">فعال‌سازی حساب <span>←</span></button>
+          </form>
+          <p class="auth-switch">قبلاً ثبت‌نام کرده‌ای؟ <a href="login.html">وارد شو</a></p>
+        </div>
+      </section>
+      <aside class="auth-art auth-art-signup" aria-label="مزایای عضویت"><div class="auth-art-mark">LB</div><div><span>عضویت در لایف‌باکس</span><h2>برنامه‌ای برای<br />زندگی واقعی.</h2><ul><li>داشبورد شخصی تمرین</li><li>پیگیری تعداد جلسات</li><li>دسترسی به برنامه مربی</li></ul></div><small>جلسه ارزیابی اولیه رایگان است.</small></aside>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

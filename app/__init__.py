@@ -1,0 +1,2 @@
+"""FitTrack Next application package."""
+

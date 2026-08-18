@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex" /><title>مدیریت کاربران | لایف‌باکس</title><link rel="stylesheet" href="styles.css" /></head>
+  <body class="app-body admin-body">
+    <div class="app-shell" data-admin>
+      <aside class="app-sidebar admin-sidebar">
+        <a class="logo sidebar-logo" href="index.html"><img class="logo-image" src="assets/gym-logo.png" alt="" /><span><b>LIFEBOX</b><small>مدیریت مجموعه</small></span></a>
+        <nav class="side-nav" aria-label="منوی مدیریت">
+          <a href="#overview"><span>01</span> نمای کلی</a>
+          <a class="active" href="#users"><span>02</span> کاربران</a>
+          <a href="coaches.html"><span>03</span> مربیان</a>
+          <a href="index.html"><span>04</span> سایت اصلی</a>
+        </nav>
+        <div class="sidebar-bottom"><span data-admin-name>مدیر لایف‌باکس</span><button type="button" data-logout>خروج از حساب</button></div>
+      </aside>
+
+      <main class="app-main">
+        <header class="app-topbar admin-topbar">
+          <div><span>مدیریت لایف‌باکس</span><h1>کاربران باشگاه</h1></div>
+          <div class="admin-date">امروز · مدیریت اعضای وب</div>
+        </header>
+
+        <section class="admin-metrics" id="overview">
+          <article><span>کل کاربران</span><strong data-total-users>۰</strong><p>همه حساب‌های ثبت‌شده</p></article>
+          <article><span>کاربران فعال</span><strong data-active-users>۰</strong><p>دارای دسترسی به داشبورد</p></article>
+          <article><span>ثبت‌نام ۳۰ روز اخیر</span><strong data-new-users>۰</strong><p>اعضای تازه‌وارد</p></article>
+        </section>
+
+        <section class="users-section" id="users">
+          <div class="users-head"><div><span>فهرست حساب‌ها</span><h2>مدیریت کاربران</h2></div><label class="search-field"><span>جست‌وجو</span><input type="search" placeholder="نام یا شماره موبایل" data-user-search /></label></div>
+          <div class="table-wrap">
+            <table class="users-table">
+              <thead><tr><th>کاربر</th><th>نقش</th><th>نوع عضویت</th><th>تاریخ ثبت‌نام</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+              <tbody data-users-body></tbody>
+            </table>
+            <p class="table-empty" data-users-empty hidden>کاربری با این عبارت پیدا نشد.</p>
+          </div>
+          <p class="admin-note">غیرفعال‌کردن حساب، دسترسی کاربر به داشبورد را متوقف می‌کند اما اطلاعات حساب را حذف نمی‌کند.</p>
+        </section>
+      </main>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>

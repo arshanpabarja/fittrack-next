@@ -1,0 +1,33 @@
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+# Runtime data containing member, biometric, attendance, or auth information
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+database/backups/
+state/
+logs/
+lifebox-landing/data/
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Generated output
+web_portal/staticfiles/
+dist/
+build/
+*.log
+
+# Local launchers and operating-system metadata
+*.lnk
+.DS_Store
+Thumbs.db

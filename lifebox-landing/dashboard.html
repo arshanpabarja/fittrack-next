@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex" /><title>داشبورد من | لایف‌باکس</title><link rel="stylesheet" href="styles.css" /></head>
+  <body class="app-body">
+    <div class="app-shell" data-dashboard>
+      <aside class="app-sidebar">
+        <a class="logo sidebar-logo" href="index.html"><img class="logo-image" src="assets/gym-logo.png" alt="" /><span><b>LIFEBOX</b><small>پنل اعضا</small></span></a>
+        <nav class="side-nav" aria-label="منوی داشبورد"><a class="active" href="dashboard.html">نمای کلی</a><a href="#today">برنامه امروز</a><a href="#membership-info">عضویت من</a><a href="coaches.html">مربیان</a></nav>
+        <div class="sidebar-bottom"><a href="index.html">بازگشت به سایت</a><button type="button" data-logout>خروج از حساب</button></div>
+      </aside>
+      <main class="app-main">
+        <header class="app-topbar"><div><span>داشبورد عضو</span><h1>سلام، <b data-user-first-name>عضو</b></h1></div><div class="account-summary"><div><strong data-user-name>—</strong><span data-user-mobile>—</span></div><span class="account-avatar" aria-hidden="true">LB</span></div></header>
+
+        <section class="welcome-panel"><div><h2 data-member-program-title>برنامه تمرینی من</h2><p data-member-program-coach>در حال دریافت برنامه مربی…</p></div><a class="button button-primary" href="#today">مشاهده برنامه</a></section>
+
+        <section class="summary-grid" id="membership-info">
+          <article class="summary-item"><span>نوع عضویت</span><strong data-user-plan>—</strong></article>
+          <article class="summary-item"><span>تاریخ ثبت‌نام</span><strong data-user-joined>—</strong></article>
+          <article class="summary-item"><span>جلسات انجام‌شده</span><strong><b data-sessions-used>۰</b> جلسه</strong><i data-session-progress hidden></i></article>
+        </section>
+
+        <section class="workout-section" id="today">
+          <div class="app-section-head"><div><span>برنامه جاری</span><h2 data-member-workout-heading>برنامه تمرینی</h2></div><p data-member-workout-meta>آخرین برنامه ثبت‌شده توسط مربی در این بخش نمایش داده می‌شود.</p></div>
+          <div class="workout-table member-workout-lines" data-member-workout-lines><p class="member-program-empty">در حال دریافت برنامه…</p></div>
+        </section>
+
+        <section class="dashboard-help"><div><h2>سؤالی درباره برنامه داری؟</h2><p>پیش از تغییر حرکت یا وزن تمرین با مربی خودت هماهنگ کن.</p></div><a class="text-link" href="coaches.html">اطلاعات مربیان</a></section>
+      </main>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
