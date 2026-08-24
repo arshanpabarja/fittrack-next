@@ -236,7 +236,7 @@ class MemberDialog(QDialog):
             self,
             "حذف عضو",
             f"عضو «{self.member.full_name}» حذف شود؟\n"
-            "پیش از حذف یک نسخه قابل بازیابی در آرشیو FitTrack ذخیره می‌شود.",
+            "پیش از حذف یک نسخه قابل بازیابی در آرشیو Life Box ذخیره می‌شود.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
             QMessageBox.StandardButton.Cancel,
         )
@@ -326,6 +326,8 @@ class RenewalDialog(QDialog):
 
 
 class MembersPage(QWidget):
+    face_index_refresh_requested = pyqtSignal()
+
     def __init__(self, service, pool: QThreadPool):
         super().__init__()
         self.service = service
@@ -593,6 +595,7 @@ class MembersPage(QWidget):
 
     def _member_deleted(self, dialog, member):
         dialog.accept()
+        self.face_index_refresh_requested.emit()
         QMessageBox.information(
             self,
             "عضو حذف شد",

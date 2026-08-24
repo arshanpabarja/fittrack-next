@@ -1,2 +1,1 @@
-"""Business models for FitTrack Next."""
-
+"""Business models for Life Box."""

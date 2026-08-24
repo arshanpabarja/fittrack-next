@@ -20,9 +20,9 @@ class Sidebar(QFrame):
         ("walk_in", "ثبت‌نام حضوری", "+"),
         ("members", "اعضا", "◉"),
         ("pending", "پذیرش سایت", "↻"),
-        ("coaches", "دسترسی مربیان", "◆"),
         ("attendance", "ورود اعضا", "→"),
         ("reports", "گزارش‌ها", "▥"),
+        ("admin", "پنل مدیریت", "▦"),
         ("settings", "تنظیمات", "⚙"),
     )
 
@@ -52,12 +52,12 @@ class Sidebar(QFrame):
                 )
             )
         else:
-            logo.setText("F")
+            logo.setText("L")
         names = QVBoxLayout()
         names.setSpacing(0)
-        title = QLabel("FITTRACK")
+        title = QLabel("LIFE BOX")
         title.setObjectName("brandTitle")
-        subtitle = QLabel("LIFE BOX GYM")
+        subtitle = QLabel("باشگاه ورزشی لایف‌باکس")
         subtitle.setObjectName("brandSubtitle")
         names.addWidget(title)
         names.addWidget(subtitle)

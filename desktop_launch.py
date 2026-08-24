@@ -7,7 +7,7 @@ from pathlib import Path
 desktop = Path(__file__).resolve().parent.parent
 live_project = desktop / "FitTrack"
 if not live_project.is_dir():
-    raise RuntimeError(f"Live FitTrack data folder was not found: {live_project}")
+    raise RuntimeError(f"Life Box data folder was not found: {live_project}")
 
 os.environ.setdefault("FITTRACK_ROOT", str(live_project))
 

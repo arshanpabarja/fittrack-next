@@ -1,5 +1,8 @@
-from PyQt6.QtCore import Qt, QThreadPool
+from datetime import datetime, timedelta
+
+from PyQt6.QtCore import Qt, QThreadPool, QTimer
 from PyQt6.QtWidgets import (
+    QDialog,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -13,6 +16,78 @@ from PyQt6.QtWidgets import (
 from app.ui.face_capture import FaceCaptureDialog
 from app.ui.widgets import TouchCard
 from app.ui.workers import TaskWorker
+
+
+class CheckInSuccessDialog(QDialog):
+    def __init__(self, result, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("ورود موفق")
+        self.setModal(True)
+        self.setFixedSize(660, 520)
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(34, 30, 34, 28)
+        layout.setSpacing(14)
+
+        icon = QLabel("✓")
+        icon.setObjectName("checkInSuccessIcon")
+        icon.setFixedSize(72, 72)
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title = QLabel("ورود با موفقیت ثبت شد")
+        title.setObjectName("checkInSuccessTitle")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        member = QLabel(result.member.full_name)
+        member.setObjectName("checkInMemberName")
+        member.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icon, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+        layout.addWidget(member)
+
+        try:
+            checkout = datetime.strptime(result.occurred_at, "%Y-%m-%d %H:%M:%S") + timedelta(minutes=60)
+            checkout_text = checkout.strftime("%H:%M")
+        except (TypeError, ValueError):
+            checkout_text = "۶۰ دقیقه دیگر"
+        remaining = result.member.remaining_sessions
+        remaining_text = "نامشخص" if remaining is None else str(remaining)
+        signup_text = result.member.signup_time or "ثبت نشده"
+
+        info = QGridLayout()
+        info.setSpacing(12)
+        fields = (
+            ("تاریخ شروع عضویت", signup_text),
+            ("خروج خودکار", checkout_text),
+            ("جلسات باقی‌مانده", remaining_text),
+            ("شماره کمد", str(result.locker_id or "—")),
+        )
+        for index, (label, value) in enumerate(fields):
+            box = QFrame()
+            box.setObjectName("checkInInfoBox")
+            box_layout = QVBoxLayout(box)
+            box_layout.setContentsMargins(16, 13, 16, 13)
+            key = QLabel(label)
+            key.setObjectName("checkInInfoLabel")
+            key.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            content = QLabel(value)
+            content.setObjectName("checkInInfoValue")
+            content.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            content.setWordWrap(True)
+            box_layout.addWidget(key)
+            box_layout.addWidget(content)
+            info.addWidget(box, index // 2, index % 2)
+        layout.addLayout(info)
+
+        if remaining is not None and remaining < 0:
+            renewal = QLabel("مهلت تمدید شما شروع شده است؛ لطفاً عضویت را تمدید کنید.")
+            renewal.setObjectName("checkInRenewalWarning")
+            renewal.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            renewal.setWordWrap(True)
+            layout.addWidget(renewal)
+        close = QPushButton("متوجه شدم")
+        close.setMinimumHeight(56)
+        close.clicked.connect(self.accept)
+        layout.addWidget(close)
+        QTimer.singleShot(15_000, self.accept)
 
 
 class AttendancePage(QWidget):
@@ -59,11 +134,6 @@ class AttendancePage(QWidget):
         actions.addWidget(check_in, 0, 0)
         layout.addLayout(actions)
 
-        self.result = QLabel("آماده ثبت تردد")
-        self.result.setObjectName("attendanceResult")
-        self.result.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.result.setWordWrap(True)
-        layout.addWidget(self.result)
         layout.addStretch()
 
     def _action_card(self, title, description, primary, callback):
@@ -93,7 +163,9 @@ class AttendancePage(QWidget):
     def refresh_faces(self):
         self._run(
             self.service.refresh_faces,
-            lambda count: self._set_result(f"اطلاعات چهره {count} عضو بازخوانی شد."),
+            lambda count: QMessageBox.information(
+                self, "بازخوانی انجام شد", f"اطلاعات چهره {count} عضو بازخوانی شد."
+            ),
         )
 
     def refresh_summary(self):
@@ -127,7 +199,6 @@ class AttendancePage(QWidget):
         if self.busy:
             return
         self.busy = True
-        self.result.setText("در حال پردازش…")
         worker = TaskWorker(operation, *args)
         worker.signals.succeeded.connect(success)
         worker.signals.failed.connect(self._failed)
@@ -135,23 +206,10 @@ class AttendancePage(QWidget):
         self.pool.start(worker)
 
     def _show_result(self, result):
-        locker = f" — کمد {result.locker_id}" if result.locker_id else ""
-        remaining = result.member.remaining_sessions
-        session_message = ""
-        if remaining is not None:
-            session_message = f"\nجلسات باقی‌مانده: {remaining}"
-            if remaining < 0:
-                session_message += " — لطفاً عضویت را تمدید کنید."
-        self._set_result(
-            f"ورود {result.member.full_name} با موفقیت ثبت شد{locker}.{session_message}"
-        )
         self.refresh_summary()
-
-    def _set_result(self, message):
-        self.result.setText(message)
+        CheckInSuccessDialog(result, self).exec()
 
     def _failed(self, message):
-        self.result.setText(message)
         QMessageBox.warning(self, "عملیات انجام نشد", message)
 
     def _finished(self):

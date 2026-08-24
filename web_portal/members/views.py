@@ -476,6 +476,80 @@ def _desktop_authorized(request):
     return provided == f"Bearer {settings.FITTRACK_DESKTOP_API_TOKEN}"
 
 
+def _desktop_plan_payload(plan):
+    return {
+        "id": plan.id,
+        "name": plan.name,
+        "gender": plan.gender,
+        "price": plan.price,
+        "sessionsPerMonth": plan.sessions_per_month,
+        "isActive": plan.is_active,
+    }
+
+
+def _desktop_plan_values(payload, current=None):
+    name = re.sub(r"\s+", " ", str(payload.get("name", current.name if current else ""))).strip()[:160]
+    gender = str(payload.get("gender", current.gender if current else Plan.Gender.ALL))
+    try:
+        price = int(payload.get("price", current.price if current else 0))
+        sessions = int(payload.get("sessionsPerMonth", current.sessions_per_month if current else 0))
+    except (TypeError, ValueError):
+        return None, error("مبلغ و تعداد جلسات باید عدد معتبر باشند.")
+    if len(name) < 3:
+        return None, error("نام پلن باید حداقل سه کاراکتر باشد.", field="name")
+    if gender not in Plan.Gender.values:
+        return None, error("جنسیت پلن معتبر نیست.", field="gender")
+    if price < 0:
+        return None, error("مبلغ پلن نمی‌تواند منفی باشد.", field="price")
+    if sessions < 1 or sessions > 60:
+        return None, error("تعداد جلسات ماهانه باید بین ۱ تا ۶۰ باشد.", field="sessionsPerMonth")
+    return {
+        "name": name,
+        "gender": gender,
+        "price": price,
+        "sessions_per_month": sessions,
+        "is_active": bool(payload.get("isActive", current.is_active if current else True)),
+    }, None
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def desktop_plans_api(request):
+    if not _desktop_authorized(request):
+        return error("توکن Life Box معتبر نیست.", status=401)
+    if request.method == "GET":
+        plans = Plan.objects.all().order_by("price", "name")
+        return JsonResponse({"ok": True, "plans": [_desktop_plan_payload(plan) for plan in plans]})
+    values, plan_error = _desktop_plan_values(body_json(request) or {})
+    if plan_error:
+        return plan_error
+    try:
+        plan = Plan.objects.create(**values)
+    except IntegrityError:
+        return error("پلنی با این نام قبلاً ساخته شده است.", status=409, field="name")
+    return JsonResponse({"ok": True, "plan": _desktop_plan_payload(plan)}, status=201)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def desktop_plan_api(request, plan_id):
+    if not _desktop_authorized(request):
+        return error("توکن Life Box معتبر نیست.", status=401)
+    plan = Plan.objects.filter(pk=plan_id).first()
+    if not plan:
+        return error("پلن پیدا نشد.", status=404)
+    values, plan_error = _desktop_plan_values(body_json(request) or {}, plan)
+    if plan_error:
+        return plan_error
+    for key, value in values.items():
+        setattr(plan, key, value)
+    try:
+        plan.save(update_fields=list(values))
+    except IntegrityError:
+        return error("پلنی با این نام قبلاً ساخته شده است.", status=409, field="name")
+    return JsonResponse({"ok": True, "plan": _desktop_plan_payload(plan)})
+
+
 def _desktop_plan_selection(payload):
     plan_ids = payload.get("planIds")
     if not isinstance(plan_ids, list) or not plan_ids:
@@ -494,7 +568,7 @@ def _desktop_plan_selection(payload):
 @require_http_methods(["GET", "POST"])
 def desktop_coaches_api(request):
     if not _desktop_authorized(request):
-        return error("توکن FitTrack معتبر نیست.", status=401)
+        return error("توکن Life Box معتبر نیست.", status=401)
     if request.method == "GET":
         coaches = User.objects.filter(role=User.Role.COACH).select_related("coach_profile").order_by("mobile")
         return JsonResponse({"ok": True, "coaches": [public_coach(coach) for coach in coaches]})
@@ -528,7 +602,7 @@ def desktop_coaches_api(request):
 @require_http_methods(["PATCH"])
 def desktop_coach_api(request, coach_id):
     if not _desktop_authorized(request):
-        return error("توکن FitTrack معتبر نیست.", status=401)
+        return error("توکن Life Box معتبر نیست.", status=401)
     coach = User.objects.filter(pk=coach_id, role=User.Role.COACH).first()
     if not coach:
         return error("حساب مربی پیدا نشد.", status=404)
@@ -555,7 +629,7 @@ def desktop_coach_api(request, coach_id):
 @require_http_methods(["PATCH"])
 def desktop_member_password_api(request, legacy_member_id):
     if not _desktop_authorized(request):
-        return error("توکن FitTrack معتبر نیست.", status=401)
+        return error("توکن Life Box معتبر نیست.", status=401)
     application = MembershipApplication.objects.select_related("user").filter(
         legacy_member_id=legacy_member_id,
         user__role=User.Role.MEMBER,
@@ -583,7 +657,7 @@ def desktop_member_password_api(request, legacy_member_id):
 @require_GET
 def desktop_applications_api(request):
     if not _desktop_authorized(request):
-        return error("توکن FitTrack معتبر نیست.", status=401)
+        return error("توکن Life Box معتبر نیست.", status=401)
     mobile = normalize_digits(request.GET.get("mobile", ""))
     applications = MembershipApplication.objects.select_related("user", "plan").filter(status=MembershipApplication.Status.PENDING)
     if mobile:
@@ -613,7 +687,7 @@ def desktop_applications_api(request):
 @require_POST
 def desktop_activate_api(request, application_id):
     if not _desktop_authorized(request):
-        return error("توکن FitTrack معتبر نیست.", status=401)
+        return error("توکن Life Box معتبر نیست.", status=401)
     payload = body_json(request) or {}
     try:
         legacy_member_id = int(payload.get("legacyMemberId"))
@@ -627,7 +701,7 @@ def desktop_activate_api(request, application_id):
         return error("این درخواست قبلاً تعیین تکلیف شده است.", status=409)
     legacy = LegacyMember.objects.filter(pk=legacy_member_id).first()
     if not legacy or normalize_digits(legacy.mobile) != application.user.mobile:
-        return error("عضو ثبت‌شده در FitTrack با این درخواست مطابقت ندارد.", status=409)
+        return error("عضو ثبت‌شده در Life Box با این درخواست مطابقت ندارد.", status=409)
     with transaction.atomic():
         application.activate(legacy_member_id=legacy_member_id, paid_amount=paid_amount)
     return JsonResponse({"ok": True, "user": public_user(application.user)})

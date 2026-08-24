@@ -1,15 +1,15 @@
 # LifeBox Django production checklist
 
 The website is now served by Django and shares the existing
-`database/gym_users.db` with FitTrack. Django only adds its own tables; the
+`database/gym_users.db` with Life Box. Django only adds its own tables; the
 legacy `users` table and its 513 current members are preserved.
 
 The workflow is:
 
 1. A visitor creates a web account and membership application (`pending`).
-2. FitTrack loads the application by mobile number.
+2. Life Box loads the application by mobile number.
 3. Reception captures the face and takes payment using the existing desktop flow.
-4. FitTrack creates the legacy member row and activates the Django application.
+4. Life Box creates the legacy member row and activates the Django application.
 5. The website detects `active` status and opens the member dashboard.
 
 Before public deployment:

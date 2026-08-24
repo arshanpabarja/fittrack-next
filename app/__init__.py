@@ -1,2 +1,1 @@
-"""FitTrack Next application package."""
-
+"""Life Box application package."""

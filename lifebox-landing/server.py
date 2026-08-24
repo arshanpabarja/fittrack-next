@@ -67,7 +67,7 @@ def connect() -> sqlite3.Connection:
 
 
 def connect_fittrack() -> sqlite3.Connection:
-    """Open FitTrack's member database in read-only mode."""
+    """Open Life Box's member database in read-only mode."""
     connection = sqlite3.connect(f"file:{FITTRACK_DB_PATH.as_posix()}?mode=ro", uri=True, timeout=8)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA query_only = ON")
@@ -518,7 +518,7 @@ class LifeBoxHandler(BaseHTTPRequestHandler):
                     {
                         "ok": False,
                         "field": "mobile",
-                        "message": "ابتدا باید عضویت شما در FitTrack توسط پذیرش باشگاه ثبت شود.",
+                        "message": "ابتدا باید عضویت شما در Life Box توسط پذیرش باشگاه ثبت شود.",
                     },
                     HTTPStatus.FORBIDDEN,
                 )

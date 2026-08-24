@@ -109,6 +109,7 @@ class RecognizedMember:
     plan: str
     used_sessions: int
     similarity: float
+    signup_time: str = ""
 
     @property
     def session_allowance(self):
@@ -147,6 +148,8 @@ class SignupPlan:
     name: str
     price: int
     gender: str = "all"
+    sessions_per_month: int = 0
+    is_active: bool = True
 
 
 @dataclass(frozen=True)

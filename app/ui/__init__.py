@@ -1,2 +1,1 @@
-"""PyQt6 user interface for FitTrack Next."""
-
+"""PyQt6 user interface for Life Box."""

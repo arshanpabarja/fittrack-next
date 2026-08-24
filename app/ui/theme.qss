@@ -1,4 +1,4 @@
-/* FitTrack Next — LifeBox light system */
+/* Life Box — light touch system */
 QWidget {
     background: #f7f7f3;
     color: #1b1b18;
@@ -93,6 +93,10 @@ QLabel#signupQrTitle { color: #ffffff; font-size: 23px; font-weight: 900; }
 QLabel#signupQrHint { color: #c9c9c1; font-size: 13px; }
 QLabel#signupQrImage { background: #ffffff; border: 6px solid #f2cf00; border-radius: 13px; }
 QLabel#signupQrAddress { color: #f2cf00; font-family: "Segoe UI"; font-size: 12px; font-weight: 700; }
+QWidget#dashboardBrandMark { background: transparent; }
+QLabel#dashboardBrandLogo { background: transparent; }
+QLabel#dashboardBrandName { color: #171714; font-family: "Segoe UI"; font-size: 21px; font-weight: 900; letter-spacing: 2px; }
+QLabel#dashboardBrandSlogan { color: #77776f; font-size: 12px; font-weight: 700; }
 
 QFrame#loginCard { background: #ffffff; border: 1px solid #deded7; border-radius: 18px; }
 QLabel#loginTitle, QLabel#dialogTitle { color: #171714; font-size: 23px; font-weight: 900; }
@@ -120,7 +124,15 @@ QLabel#cameraStatus { color: #5f5f58; padding: 8px; }
 QLabel#enrollmentSummary { background: #fff7c6; color: #514500; border: 1px solid #e7d875; border-radius: 10px; padding: 12px; }
 QLabel#workflowStatus { background: #ffffff; color: #4d4d47; border: 1px solid #deded7; border-radius: 9px; padding: 10px; }
 QLabel#attendanceSummary { background: #ffffff; color: #4d4d47; border: 1px solid #deded7; border-radius: 10px; padding: 12px; font-weight: 800; }
-QLabel#attendanceResult { background: #fff7c6; color: #514500; border: 1px solid #e7d875; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 800; }
+QLabel#checkInSuccessIcon { background: #f2cf00; color: #171714; border: 2px solid #171714; border-radius: 36px; font-family: "Segoe UI Symbol"; font-size: 38px; font-weight: 900; }
+QLabel#checkInSuccessTitle { color: #171714; font-size: 25px; font-weight: 900; }
+QLabel#checkInMemberName { color: #5f5200; font-size: 20px; font-weight: 900; }
+QFrame#checkInInfoBox { background: #ffffff; border: 1px solid #deded7; border-radius: 12px; }
+QLabel#checkInInfoLabel { color: #77776f; font-size: 12px; }
+QLabel#checkInInfoValue { color: #171714; font-size: 18px; font-weight: 900; }
+QLabel#checkInRenewalWarning { background: #fff3ab; color: #514500; border: 1px solid #e7d875; border-radius: 10px; padding: 10px; font-weight: 800; }
+QCheckBox { min-height: 36px; spacing: 10px; font-weight: 700; }
+QCheckBox::indicator { width: 26px; height: 26px; }
 QScrollBar:vertical { background: transparent; width: 16px; margin: 2px; }
 QScrollBar::handle:vertical { background: #c9c9c1; min-height: 30px; border-radius: 5px; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }

@@ -16,7 +16,7 @@ def number(value):
 
 
 class Command(BaseCommand):
-    help = "Import membership plans from FitTrack's plans.json without deleting existing plans."
+    help = "Import membership plans from Life Box plans.json without deleting existing plans."
 
     def handle(self, *args, **options):
         source = settings.BASE_DIR.parent / "database" / "plans.json"

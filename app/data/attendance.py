@@ -220,6 +220,37 @@ class AttendanceRepository:
         items = tuple(self._record(row) for row in rows[:page_size])
         return AttendancePageResult(items, page, page_size, len(rows) > page_size)
 
+    def activity_overview(self, today_prefix, month_prefix, period="today", limit=200):
+        selected_prefix = today_prefix if period == "today" else month_prefix
+        with self.database.connect(readonly=True) as connection:
+            today_entries = connection.execute(
+                "SELECT COUNT(*) FROM attendance_sessions WHERE checked_in_at LIKE ?",
+                (f"{today_prefix}%",),
+            ).fetchone()[0]
+            month_entries = connection.execute(
+                "SELECT COUNT(*) FROM attendance_sessions WHERE checked_in_at LIKE ?",
+                (f"{month_prefix}%",),
+            ).fetchone()[0]
+            inside = connection.execute(
+                "SELECT COUNT(*) FROM attendance_sessions WHERE checked_out_at IS NULL"
+            ).fetchone()[0]
+            rows = connection.execute(
+                """
+                SELECT id, full_name, mobile, plan, checked_in_at,
+                       checked_out_at, locker_id
+                FROM attendance_sessions
+                WHERE checked_in_at LIKE ?
+                ORDER BY id DESC LIMIT ?
+                """,
+                (f"{selected_prefix}%", min(500, max(20, int(limit)))),
+            ).fetchall()
+        return {
+            "today_entries": int(today_entries),
+            "month_entries": int(month_entries),
+            "inside": int(inside),
+            "items": tuple(self._record(row) for row in rows),
+        }
+
     def all_sessions(self, batch_size=500):
         offset = 0
         while True:

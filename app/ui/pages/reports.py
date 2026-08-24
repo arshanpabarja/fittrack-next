@@ -155,7 +155,7 @@ class ReportsPage(QWidget):
         path, _ = QFileDialog.getSaveFileName(
             self,
             "ذخیره گزارش",
-            "fittrack-attendance.csv",
+            "lifebox-attendance.csv",
             "CSV (*.csv)",
         )
         if not path:

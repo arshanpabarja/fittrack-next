@@ -10,6 +10,7 @@ from app.domain.models import CoachAccount, PaymentReceipt, SignupPlan
 from app.services.coaches import CoachesService
 from app.services.members import MemberService
 from app.services.walk_in import WalkInSignupService
+from app.services.plans import PlansService
 from tests.test_repositories import MEMBERS_SCHEMA
 
 
@@ -121,6 +122,44 @@ class CoachesAndWalkInTests(unittest.TestCase):
         result = service.reset_site_password(1, "NewPass482!", "NewPass482!")
         self.assertEqual(api.call, (1, "NewPass482!"))
         self.assertEqual(result["mobile"], "09120000001")
+
+    def test_plan_management_syncs_active_plans_to_walk_in_file(self):
+        class PlanApi:
+            def __init__(self):
+                self.plans = [
+                    SignupPlan(1, "بدنسازی ۱۲ جلسه", 2_400_000, "male", 12, True),
+                    SignupPlan(2, "پلن قدیمی", 1_000_000, "all", 8, False),
+                ]
+
+            def list_admin_plans(self):
+                return tuple(self.plans)
+
+            def save_plan(self, values, plan_id=None):
+                saved = SignupPlan(
+                    plan_id or 3,
+                    values["name"],
+                    values["price"],
+                    values["gender"],
+                    values["sessions_per_month"],
+                    values["is_active"],
+                )
+                self.plans.append(saved)
+                return saved
+
+        plans_path = self.root / "plans.json"
+        plans_path.write_text('{"single_session_price": 500000}', encoding="utf-8")
+        service = PlansService(PlanApi(), plans_path)
+        service.save({
+            "name": "پلن بانوان ۱۰ جلسه",
+            "price": 2_000_000,
+            "gender": "female",
+            "sessions_per_month": 10,
+            "is_active": True,
+        })
+        payload = json.loads(plans_path.read_text(encoding="utf-8"))
+        self.assertEqual(payload["مرد"][0]["name"], "بدنسازی ۱۲ جلسه")
+        self.assertEqual(payload["single_session_price"], 500000)
+        self.assertFalse(any(item["name"] == "پلن قدیمی" for item in payload["همه"]))
 
 
 if __name__ == "__main__":

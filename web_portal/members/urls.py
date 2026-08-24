@@ -31,6 +31,8 @@ urlpatterns = [
     path("api/member/program", views.member_program_api),
     path("api/desktop/coaches", views.desktop_coaches_api),
     path("api/desktop/coaches/<int:coach_id>", views.desktop_coach_api),
+    path("api/desktop/plans", views.desktop_plans_api),
+    path("api/desktop/plans/<int:plan_id>", views.desktop_plan_api),
     path("api/desktop/members/<int:legacy_member_id>/password", views.desktop_member_password_api),
     path("api/desktop/applications", views.desktop_applications_api),
     path("api/desktop/applications/<int:application_id>/activate", views.desktop_activate_api),

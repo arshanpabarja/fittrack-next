@@ -65,6 +65,7 @@ class AttendanceTests(unittest.TestCase):
     def test_check_in_and_out_are_atomic_and_update_usage(self):
         check_in = self.service.check_in([0.99, 0.01])
         self.assertEqual(check_in.member.mobile, "09120000001")
+        self.assertEqual(check_in.member.signup_time, "2026-01-01")
         self.assertEqual(check_in.locker_id, 1)
         self.assertEqual(self.attendance.summary(), {"inside": 1, "free_lockers": 1})
         self.assertEqual(self.members.get(1).used_sessions, 1)
@@ -74,6 +75,19 @@ class AttendanceTests(unittest.TestCase):
         self.assertEqual(check_out.locker_id, 1)
         self.assertEqual(self.attendance.summary(), {"inside": 0, "free_lockers": 2})
         self.assertEqual(self.access.events[-1], ("exit", None))
+
+    def test_admin_activity_overview_supports_today_and_month(self):
+        member = self.service.face_index.match([1, 0])
+        self.attendance.check_in(member, "2026-08-12 10:00:00")
+        self.attendance.check_out(member.mobile, "2026-08-12 11:00:00")
+        self.attendance.check_in(member, "2026-08-10 10:00:00")
+        overview = self.attendance.activity_overview(
+            "2026-08-12", "2026-08", period="month"
+        )
+        self.assertEqual(overview["today_entries"], 1)
+        self.assertEqual(overview["month_entries"], 2)
+        self.assertEqual(overview["inside"], 1)
+        self.assertEqual(len(overview["items"]), 2)
 
     def test_duplicate_active_check_in_is_rejected(self):
         self.service.check_in([1, 0])

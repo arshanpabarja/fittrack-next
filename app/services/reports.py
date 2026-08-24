@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime
 
 
 class ReportsService:
@@ -7,6 +8,14 @@ class ReportsService:
 
     def list_sessions(self, search="", page=1, page_size=50):
         return self.attendance_repository.list_sessions(search, page, page_size)
+
+    def activity_overview(self, period="today", now=None):
+        now = now or datetime.now()
+        return self.attendance_repository.activity_overview(
+            now.strftime("%Y-%m-%d"),
+            now.strftime("%Y-%m"),
+            period=period,
+        )
 
     def export_csv(self, path):
         count = 0
@@ -29,4 +38,3 @@ class ReportsService:
                 )
                 count += 1
         return count
-

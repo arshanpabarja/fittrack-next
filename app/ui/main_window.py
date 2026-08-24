@@ -12,12 +12,13 @@ from app.ui.pages.reports import ReportsPage
 from app.ui.pages.settings import SettingsPage
 from app.ui.pages.coaches import CoachesPage
 from app.ui.pages.walk_in import WalkInSignupPage
+from app.ui.pages.admin import AdminPanelPage
 from app.ui.widgets import Sidebar, TopBar
 from app.ui.workers import TaskWorker
 
 
 class MainWindow(QMainWindow):
-    PROTECTED_PAGES = {"members", "pending", "coaches", "reports", "settings"}
+    PROTECTED_PAGES = {"members", "pending", "coaches", "reports", "settings", "admin"}
 
     def __init__(self, settings, services):
         super().__init__()
@@ -27,9 +28,11 @@ class MainWindow(QMainWindow):
         self.pool = QThreadPool.globalInstance()
         self.pool.setMaxThreadCount(4)
         self.pending_page = "dashboard"
+        self.current_page = "dashboard"
+        self.back_page = "dashboard"
         self.pages = {}
 
-        self.setWindowTitle("FitTrack Next | باشگاه ورزشی لایف‌باکس")
+        self.setWindowTitle("Life Box | باشگاه ورزشی لایف‌باکس")
         self.resize(1280, 820)
         self.setMinimumSize(1050, 700)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
@@ -49,7 +52,7 @@ class MainWindow(QMainWindow):
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
         self.top_bar = TopBar()
-        self.top_bar.back_requested.connect(lambda: self.navigate("dashboard"))
+        self.top_bar.back_requested.connect(self._go_back)
         self.stack = QStackedWidget()
         self.stack.setObjectName("pageStack")
         content_layout.addWidget(self.top_bar)
@@ -86,7 +89,9 @@ class MainWindow(QMainWindow):
         )
         walk_in.member_created.connect(self._refresh_face_index)
         self._register("walk_in", walk_in)
-        self._register("members", MembersPage(self.services.members, self.pool))
+        members = MembersPage(self.services.members, self.pool)
+        members.face_index_refresh_requested.connect(self._refresh_face_index)
+        self._register("members", members)
         pending = PendingApplicationsPage(
             self.services.pending,
             self.services.enrollment,
@@ -104,6 +109,10 @@ class MainWindow(QMainWindow):
         ))
         self._register("reports", ReportsPage(self.services.reports, self.pool))
         self._register("coaches", CoachesPage(self.services.coaches, self.pool))
+        admin = AdminPanelPage(self.services.reports, self.services.plans, self.pool)
+        admin.navigation_requested.connect(self.navigate)
+        admin.plans_changed.connect(self._plans_changed)
+        self._register("admin", admin)
         self._register("settings", SettingsPage(self.services.preferences, self.pool))
         login = ManagerLoginPage(self.services.auth)
         login.authenticated.connect(self._manager_authenticated)
@@ -121,9 +130,19 @@ class MainWindow(QMainWindow):
             self.sidebar.select("")
             self.top_bar.set_dashboard(False)
             return
+        if key == "coaches" and self.current_page == "admin":
+            self.back_page = "admin"
+        elif key != self.current_page:
+            self.back_page = "dashboard"
         self.stack.setCurrentWidget(self.pages[key])
+        self.current_page = key
         self.sidebar.select(key)
         self.top_bar.set_dashboard(key == "dashboard")
+
+    def _go_back(self):
+        destination = self.back_page
+        self.back_page = "dashboard"
+        self.navigate(destination)
 
     def _run_auto_checkout(self):
         worker = TaskWorker(self.services.attendance.auto_checkout)
@@ -137,6 +156,9 @@ class MainWindow(QMainWindow):
 
     def _refresh_face_index(self):
         self.pool.start(TaskWorker(self.services.attendance.refresh_faces))
+
+    def _plans_changed(self):
+        self.pages["walk_in"].plans = []
 
     def _manager_authenticated(self, username):
         self.session.manager_authenticated = True
@@ -152,7 +174,7 @@ class MainWindow(QMainWindow):
 
 
 class Services:
-    def __init__(self, *, dashboard, members, auth, pending, enrollment, attendance, reports, preferences, coaches, walk_in, camera_indices):
+    def __init__(self, *, dashboard, members, auth, pending, enrollment, attendance, reports, preferences, coaches, walk_in, plans, camera_indices):
         self.dashboard = dashboard
         self.members = members
         self.auth = auth
@@ -163,4 +185,5 @@ class Services:
         self.preferences = preferences
         self.coaches = coaches
         self.walk_in = walk_in
+        self.plans = plans
         self.camera_indices = camera_indices

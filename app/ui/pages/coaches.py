@@ -35,7 +35,7 @@ class CoachAccessDialog(QDialog):
         title = QLabel("ویرایش رمز و پلن‌های مربی" if coach else "ساخت حساب ورود مربی")
         title.setObjectName("dialogTitle")
         description = QLabel(
-            "در FitTrack فقط شماره ورود، رمز و پلن‌های مجاز تعیین می‌شوند. "
+            "در Life Box فقط شماره ورود، رمز و پلن‌های مجاز تعیین می‌شوند. "
             "نام، تخصص، معرفی و برنامه‌های تمرینی را مربی داخل سایت تکمیل می‌کند."
         )
         description.setObjectName("membershipStatus")

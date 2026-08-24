@@ -26,6 +26,7 @@ from app.services.reports import ReportsService
 from app.services.preferences import PreferencesService
 from app.services.coaches import CoachesService
 from app.services.walk_in import WalkInSignupService
+from app.services.plans import PlansService
 from app.ui.main_window import MainWindow, Services
 
 
@@ -58,6 +59,7 @@ def build_services(settings):
     membership_repository = MembershipRepository(settings.state_database)
     if runtime["pos_mode"] != "fake":
         raise RuntimeError("در این نسخه فقط FITTRACK_POS_MODE=fake فعال است.")
+    plans_service = PlansService(api, settings.data_dir / "plans.json")
     return Services(
         dashboard=DashboardService(
             settings.members_database,
@@ -94,6 +96,7 @@ def build_services(settings):
             members_repository,
             FakePosTerminal(),
         ),
+        plans=plans_service,
         camera_indices=camera_indices,
     )
 
@@ -103,7 +106,7 @@ def run():
     configure_logging(settings.log_dir)
     sys.excepthook = _exception_hook
     app = QApplication(sys.argv)
-    app.setApplicationName("FitTrack Next")
+    app.setApplicationName("Life Box")
     app.setOrganizationName("LifeBox Gym")
 
     font_path = settings.project_root / "Vazirmatn-Bold.ttf"

@@ -35,6 +35,7 @@ class AttendanceService:
             mobile=current.mobile,
             plan=current.plan,
             used_sessions=current.used_sessions,
+            signup_time=current.signup_time,
         )
         remaining_before = remaining_sessions(member.plan, member.used_sessions)
         if remaining_before is not None and remaining_before <= -5:

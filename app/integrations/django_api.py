@@ -93,9 +93,39 @@ class DjangoApiClient:
                 name=item.get("name", ""),
                 price=int(item.get("price") or 0),
                 gender=item.get("gender", "all"),
+                sessions_per_month=int(item.get("sessions_per_month") or 0),
             )
             for item in payload.get("plans", [])
         )
+
+    @staticmethod
+    def _plan(item):
+        return SignupPlan(
+            id=int(item["id"]),
+            name=item.get("name", ""),
+            price=int(item.get("price") or 0),
+            gender=item.get("gender", "all"),
+            sessions_per_month=int(item.get("sessionsPerMonth") or 0),
+            is_active=bool(item.get("isActive", True)),
+        )
+
+    def list_admin_plans(self):
+        payload = self._request("GET", "/api/desktop/plans")
+        return tuple(self._plan(item) for item in payload.get("plans", []))
+
+    def save_plan(self, values, plan_id=None):
+        payload = {
+            "name": values["name"],
+            "price": int(values["price"]),
+            "gender": values["gender"],
+            "sessionsPerMonth": int(values["sessions_per_month"]),
+            "isActive": bool(values.get("is_active", True)),
+        }
+        if plan_id is None:
+            result = self._request("POST", "/api/desktop/plans", payload)
+        else:
+            result = self._request("PATCH", f"/api/desktop/plans/{int(plan_id)}", payload)
+        return self._plan(result["plan"])
 
     @staticmethod
     def _coach(item):

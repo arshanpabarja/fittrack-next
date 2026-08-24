@@ -1,2 +1,1 @@
-"""FitTrack use cases."""
-
+"""Life Box use cases."""

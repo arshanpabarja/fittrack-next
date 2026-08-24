@@ -285,4 +285,29 @@ class CoachPanelFlowTests(TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_life_box_admin_can_create_and_edit_membership_plans(self):
+        desktop = Client(HTTP_AUTHORIZATION=f"Bearer {settings.FITTRACK_DESKTOP_API_TOKEN}")
+        created = desktop.post(
+            "/api/desktop/plans",
+            data=json.dumps({
+                "name": "پلن تست مدیریت",
+                "gender": "female",
+                "price": 3_100_000,
+                "sessionsPerMonth": 14,
+                "isActive": True,
+            }, ensure_ascii=False),
+            content_type="application/json",
+        )
+        self.assertEqual(created.status_code, 201)
+        plan_id = created.json()["plan"]["id"]
+        updated = desktop.patch(
+            f"/api/desktop/plans/{plan_id}",
+            data=json.dumps({"price": 3_300_000, "isActive": False}),
+            content_type="application/json",
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["plan"]["price"], 3_300_000)
+        self.assertFalse(updated.json()["plan"]["isActive"])
+        self.assertFalse(Plan.objects.get(pk=plan_id).is_active)
+
 # Create your tests here.
