@@ -108,7 +108,6 @@ class DashboardPage(QWidget):
             card_layout.addWidget(open_label, alignment=Qt.AlignmentFlag.AlignLeft)
             card.make_children_transparent()
             actions.addWidget(card, index // 3, index % 3)
-        actions.addWidget(self._brand_mark(), 1, 2)
         layout.addLayout(actions)
         layout.addSpacing(72)
 
@@ -118,6 +117,13 @@ class DashboardPage(QWidget):
         qr_row.addWidget(self._signup_qr_card())
         qr_row.addStretch()
         layout.addLayout(qr_row)
+        layout.addSpacing(110)
+        brand_row = QHBoxLayout()
+        brand_row.addStretch()
+        brand_row.addWidget(self._brand_mark())
+        brand_row.addStretch()
+        layout.addLayout(brand_row)
+        layout.addSpacing(90)
         layout.addStretch()
         scroll.setWidget(content)
         root_layout.addWidget(scroll)
@@ -125,28 +131,18 @@ class DashboardPage(QWidget):
     def _brand_mark(self):
         mark = QWidget()
         mark.setObjectName("dashboardBrandMark")
-        mark.setFixedHeight(230)
+        mark.setFixedSize(430, 430)
         mark_layout = QVBoxLayout(mark)
-        mark_layout.setContentsMargins(18, 12, 18, 12)
+        mark_layout.setContentsMargins(12, 12, 12, 12)
         logo = QLabel()
         logo.setObjectName("dashboardBrandLogo")
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo.setFixedSize(142, 142)
-        logo_path = self.qr_path.parent / "gym-logo.png" if self.qr_path else None
+        logo.setFixedSize(406, 406)
+        logo_path = self.qr_path.parent / "gym-logo-transparent.png" if self.qr_path else None
         pixmap = QPixmap(str(logo_path)) if logo_path else QPixmap()
         if not pixmap.isNull():
-            logo.setPixmap(pixmap.scaled(132, 132, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        name = QLabel("LIFE BOX")
-        name.setObjectName("dashboardBrandName")
-        name.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        slogan = QLabel("هر روز، قوی‌تر از دیروز")
-        slogan.setObjectName("dashboardBrandSlogan")
-        slogan.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        mark_layout.addStretch()
+            logo.setPixmap(pixmap.scaled(390, 390, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         mark_layout.addWidget(logo, alignment=Qt.AlignmentFlag.AlignCenter)
-        mark_layout.addWidget(name)
-        mark_layout.addWidget(slogan)
-        mark_layout.addStretch()
         return mark
 
     def _signup_qr_card(self):

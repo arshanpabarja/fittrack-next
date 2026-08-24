@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        logo = settings.assets_dir / "icons" / "gym-logo.png"
+        logo = settings.assets_dir / "icons" / "gym-logo-transparent.png"
         self.sidebar = Sidebar(logo)
         self.sidebar.navigation_requested.connect(self.navigate)
         content = QWidget()

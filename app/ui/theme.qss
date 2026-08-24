@@ -51,7 +51,7 @@ QSpinBox::up-button { border-bottom: 1px solid #d8d8d1; border-top-left-radius: 
 QSpinBox::down-button { border-bottom-left-radius: 8px; }
 
 QFrame#sidebar { background: #ffffff; border: none; border-left: 1px solid #e1e1da; }
-QLabel#brandLogo { background: #fffbea; border: 1px solid #e7e2c4; border-radius: 12px; }
+QLabel#brandLogo { background: transparent; border: none; }
 QLabel#brandTitle { color: #171714; font-family: "Segoe UI"; font-size: 19px; font-weight: 900; }
 QLabel#brandSubtitle { color: #8a8a82; font-family: "Segoe UI"; font-size: 10px; font-weight: 700; }
 QLabel#sidebarSection { color: #94948c; font-size: 11px; padding: 0 9px 8px 0; }
@@ -95,8 +95,6 @@ QLabel#signupQrImage { background: #ffffff; border: 6px solid #f2cf00; border-ra
 QLabel#signupQrAddress { color: #f2cf00; font-family: "Segoe UI"; font-size: 12px; font-weight: 700; }
 QWidget#dashboardBrandMark { background: transparent; }
 QLabel#dashboardBrandLogo { background: transparent; }
-QLabel#dashboardBrandName { color: #171714; font-family: "Segoe UI"; font-size: 21px; font-weight: 900; letter-spacing: 2px; }
-QLabel#dashboardBrandSlogan { color: #77776f; font-size: 12px; font-weight: 700; }
 
 QFrame#loginCard { background: #ffffff; border: 1px solid #deded7; border-radius: 18px; }
 QLabel#loginTitle, QLabel#dialogTitle { color: #171714; font-size: 23px; font-weight: 900; }
