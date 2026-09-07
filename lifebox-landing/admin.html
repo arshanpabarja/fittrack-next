@@ -1,44 +1,15 @@
 <!doctype html>
-<html lang="fa" dir="rtl">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex" /><title>مدیریت کاربران | لایف‌باکس</title><link rel="stylesheet" href="styles.css" /></head>
-  <body class="app-body admin-body">
-    <div class="app-shell" data-admin>
-      <aside class="app-sidebar admin-sidebar">
-        <a class="logo sidebar-logo" href="index.html"><img class="logo-image" src="assets/gym-logo.png" alt="" /><span><b>LIFEBOX</b><small>مدیریت مجموعه</small></span></a>
-        <nav class="side-nav" aria-label="منوی مدیریت">
-          <a href="#overview"><span>01</span> نمای کلی</a>
-          <a class="active" href="#users"><span>02</span> کاربران</a>
-          <a href="coaches.html"><span>03</span> مربیان</a>
-          <a href="index.html"><span>04</span> سایت اصلی</a>
-        </nav>
-        <div class="sidebar-bottom"><span data-admin-name>مدیر لایف‌باکس</span><button type="button" data-logout>خروج از حساب</button></div>
-      </aside>
-
-      <main class="app-main">
-        <header class="app-topbar admin-topbar">
-          <div><span>مدیریت لایف‌باکس</span><h1>کاربران باشگاه</h1></div>
-          <div class="admin-date">امروز · مدیریت اعضای وب</div>
-        </header>
-
-        <section class="admin-metrics" id="overview">
-          <article><span>کل کاربران</span><strong data-total-users>۰</strong><p>همه حساب‌های ثبت‌شده</p></article>
-          <article><span>کاربران فعال</span><strong data-active-users>۰</strong><p>دارای دسترسی به داشبورد</p></article>
-          <article><span>ثبت‌نام ۳۰ روز اخیر</span><strong data-new-users>۰</strong><p>اعضای تازه‌وارد</p></article>
-        </section>
-
-        <section class="users-section" id="users">
-          <div class="users-head"><div><span>فهرست حساب‌ها</span><h2>مدیریت کاربران</h2></div><label class="search-field"><span>جست‌وجو</span><input type="search" placeholder="نام یا شماره موبایل" data-user-search /></label></div>
-          <div class="table-wrap">
-            <table class="users-table">
-              <thead><tr><th>کاربر</th><th>نقش</th><th>نوع عضویت</th><th>تاریخ ثبت‌نام</th><th>وضعیت</th><th>عملیات</th></tr></thead>
-              <tbody data-users-body></tbody>
-            </table>
-            <p class="table-empty" data-users-empty hidden>کاربری با این عبارت پیدا نشد.</p>
-          </div>
-          <p class="admin-note">غیرفعال‌کردن حساب، دسترسی کاربر به داشبورد را متوقف می‌کند اما اطلاعات حساب را حذف نمی‌کند.</p>
-        </section>
-      </main>
-    </div>
-    <script src="app.js"></script>
-  </body>
-</html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>پنل مالک باشگاه | لایف‌باکس</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="owner.css"></head>
+<body class="app-body admin-body"><div class="app-shell" data-owner>
+<aside class="app-sidebar admin-sidebar"><a class="logo sidebar-logo" href="index.html"><img class="logo-image" src="assets/gym-logo.png" alt=""><span><b>LIFEBOX</b><small>پنل مالک باشگاه</small></span></a>
+<nav class="side-nav" aria-label="مدیریت باشگاه"><a href="#overview" class="active">نمای کلی</a><a href="#members">اعضای باشگاه</a><a href="#activity">ورود و حضور</a><a href="#plans">پلن‌ها و قیمت‌ها</a><a href="/django-admin/members/coachprofile/">مدیریت مربیان</a><a href="/django-admin/members/workoutprogram/">برنامه‌های تمرینی</a><a href="#audit">تغییرات اخیر</a><a href="index.html">بازگشت به سایت</a></nav>
+<div class="sidebar-bottom"><span id="owner-name">مدیر باشگاه</span><button type="button" data-logout>خروج از حساب</button></div></aside>
+<main class="app-main"><header class="app-topbar"><div><span>مرکز مدیریت لایف‌باکس</span><h1>باشگاه، در یک نگاه</h1></div><button class="button button-outline" id="refresh-owner">به‌روزرسانی</button></header><p id="owner-feedback" role="status" aria-live="polite">در حال دریافت اطلاعات…</p>
+<section id="overview" class="admin-metrics owner-metrics" aria-label="آمار باشگاه"><article><span>کل اعضا</span><strong id="metric-members">—</strong><p>اعضای حضوری و ثبت‌نام‌های سایت</p></article><article><span>هم‌اکنون در باشگاه</span><strong id="metric-inside">—</strong><p>ورود بدون ثبت خروج</p></article><article><span>مراجعه در بازه انتخابی</span><strong id="metric-visits">—</strong><p id="metric-visitors">—</p></article><article><span>ورود به سایت در بازه</span><strong id="metric-logins">—</strong><p id="metric-login-users">—</p></article></section>
+<section id="members" class="users-section owner-section"><div class="users-head"><div><span>دفتر اعضای مجموعه</span><h2>اعضای باشگاه</h2></div><label class="search-field">جست‌وجو <input id="owner-search" type="search" placeholder="نام، موبایل یا کد ملی"></label><button class="table-action" id="export-members">دریافت CSV</button></div><p class="admin-note" id="member-count"></p><div class="table-wrap"><table class="users-table"><thead><tr><th>نام و موبایل</th><th>پلن</th><th>جلسات مصرف‌شده</th><th>بدهی (تومان)</th><th>حساب سایت</th><th>عملیات</th></tr></thead><tbody id="owner-members"></tbody></table></div><div class="owner-pagination"><button class="table-action" id="previous-members">صفحه قبل</button><span id="member-page"></span><button class="table-action" id="next-members">صفحه بعد</button></div><p class="admin-note">ویرایش مشخصات در دیتابیس مشترک باشگاه ذخیره می‌شود. تعلیق حساب سایت، جایگزین لغو عضویت حضوری نیست.</p></section>
+<section id="activity" class="users-section owner-section"><div class="users-head"><div><span>فعالیت اعضا</span><h2>ورود و حضور</h2></div><label>بازه گزارش <select id="activity-period"><option value="today">امروز</option><option value="month">این ماه (میلادی)</option></select></label></div><p id="activity-range" class="admin-note"></p><p id="attendance-warning" role="status"></p><h3>ورود به باشگاه</h3><div class="table-wrap"><table class="users-table"><thead><tr><th>عضو</th><th>ورود</th><th>خروج</th><th>کمد</th></tr></thead><tbody id="owner-attendance"></tbody></table></div><h3>ورود به حساب سایت</h3><p class="admin-note">تاریخچه ورود سایت از زمان فعال‌سازی این پنل ثبت می‌شود. حداکثر ۵۰۰ رویداد اخیر نمایش داده می‌شود؛ آمار شامل کل بازه است.</p><div class="table-wrap"><table class="users-table"><thead><tr><th>کاربر</th><th>موبایل</th><th>زمان ورود</th></tr></thead><tbody id="owner-logins"></tbody></table></div></section>
+<section id="plans" class="users-section owner-section"><div class="users-head"><div><span>کاتالوگ مشترک سایت و باشگاه</span><h2>پلن‌ها و قیمت‌ها</h2></div><button class="button" id="new-plan">افزودن پلن</button></div><p class="admin-note">قیمت‌ها به تومان هستند. تغییرات با بارگذاری بعدی فهرست پلن در برنامه باشگاه خوانده می‌شوند. پلن و جلسات خریداری‌شده اعضای قبلی خودکار تغییر نمی‌کند.</p><div id="owner-plans" class="owner-plan-grid"></div></section>
+<section id="audit" class="users-section owner-section"><h2>تغییرات اخیر مدیریت</h2><ul id="owner-audit"></ul></section></main></div>
+<dialog id="member-dialog" aria-labelledby="member-title"><form id="member-form"><h2 id="member-title">ویرایش عضو</h2><div class="owner-form-grid"><label>نام<input name="firstName" required maxlength="150"></label><label>نام خانوادگی<input name="lastName" required maxlength="150"></label><label>موبایل<input name="mobile" required inputmode="tel" maxlength="11" dir="ltr"></label><label>کد ملی<input name="nationalId" inputmode="numeric" maxlength="10" dir="ltr"></label><label class="wide">نشانی<textarea name="address" maxlength="2000"></textarea></label><label class="wide">تغییر پلن<select name="planId"></select></label><label>بدهی (تومان)<input name="debt" type="number" min="0" max="1000000000000" required></label><label>پرداخت ثبت‌شده (تومان)<input name="payment" type="number" min="0" max="1000000000000" required></label></div><p class="form-result" role="alert"></p><div class="owner-form-actions"><button class="button" type="submit">ذخیره تغییرات</button><button class="table-action" type="button" data-close>انصراف</button></div></form></dialog>
+<dialog id="plan-dialog" aria-labelledby="plan-title"><form id="plan-form"><h2 id="plan-title">ویرایش پلن</h2><div class="owner-form-grid"><label class="wide">نام پلن<input name="name" required minlength="3" maxlength="160" placeholder="بدنسازی ۱۲ جلسه در ماه"></label><label>قیمت (تومان)<input name="price" type="number" min="0" max="1000000000000" required></label><label>جلسات ماهانه<input name="sessionsPerMonth" type="number" min="1" max="60" required></label><label>گروه<select name="gender"><option value="all">همه</option><option value="male">آقایان</option><option value="female">بانوان</option></select></label><label>وضعیت<select name="isActive"><option value="true">فعال</option><option value="false">غیرفعال</option></select></label></div><p class="admin-note">تعداد جلسات در نام پلن باید با جلسات ماهانه یکسان باشد.</p><p class="form-result" role="alert"></p><div class="owner-form-actions"><button class="button" type="submit">ذخیره پلن</button><button class="table-action" type="button" data-close>انصراف</button></div></form></dialog>
+<script src="app.js"></script><script src="owner.js"></script></body></html>

@@ -30,9 +30,10 @@ class MemberDialog(QDialog):
     renew_requested = pyqtSignal(object, object)
     password_reset_requested = pyqtSignal(str, str)
 
-    def __init__(self, member, parent=None):
+    def __init__(self, member, parent=None, plans=()):
         super().__init__(parent)
         self.member = member
+        self.plans = tuple(plans)
         self.setWindowTitle("ویرایش عضو")
         self.setModal(True)
         self.resize(680, 780)
@@ -244,7 +245,7 @@ class MemberDialog(QDialog):
             self.delete_requested.emit()
 
     def _open_renewal(self):
-        dialog = RenewalDialog(self.member, self)
+        dialog = RenewalDialog(self.member, self, plans=self.plans)
         dialog.submit_requested.connect(
             lambda values: self.renew_requested.emit(dialog, values)
         )
@@ -254,7 +255,7 @@ class MemberDialog(QDialog):
 class RenewalDialog(QDialog):
     submit_requested = pyqtSignal(object)
 
-    def __init__(self, member, parent=None):
+    def __init__(self, member, parent=None, plans=()):
         super().__init__(parent)
         self.member = member
         self.setWindowTitle("تمدید عضویت")
@@ -282,13 +283,29 @@ class RenewalDialog(QDialog):
 
         form = QFormLayout()
         form.setSpacing(14)
-        self.plan = QLineEdit(member.plan)
-        self.plan.setClearButtonEnabled(True)
+        member_gender = {"مرد": "male", "زن": "female"}.get(member.gender, "all")
+        self.available_plans = [
+            plan
+            for plan in plans
+            if plan.is_active and plan.gender in {"all", member_gender}
+        ]
+        self.plan = QComboBox()
+        self.plan.setMinimumHeight(46)
+        if self.available_plans:
+            for plan in self.available_plans:
+                self.plan.addItem(plan.name, plan)
+            current = self.plan.findText(member.plan)
+            self.plan.setCurrentIndex(current if current >= 0 else 0)
+        else:
+            self.plan.addItem("پلن فعالی برای تمدید تعریف نشده است", None)
+            self.plan.setEnabled(False)
         self.amount = QSpinBox()
         self.amount.setRange(0, 2_000_000_000)
         self.amount.setSingleStep(100_000)
-        self.amount.setValue(max(0, member.payment))
         self.amount.setSuffix(" تومان")
+        self.amount.setGroupSeparatorShown(True)
+        self.plan.currentIndexChanged.connect(self._update_plan_price)
+        self._update_plan_price(self.plan.currentIndex())
         form.addRow("پلن جدید", self.plan)
         form.addRow("مبلغ پرداخت", self.amount)
         layout.addLayout(form)
@@ -296,11 +313,18 @@ class RenewalDialog(QDialog):
         self.error = QLabel()
         self.error.setObjectName("formError")
         self.error.setWordWrap(True)
-        self.error.hide()
+        if self.available_plans:
+            self.error.hide()
+        else:
+            self.error.setText(
+                "برای تمدید، ابتدا یک پلن فعال و مناسب جنسیت عضو در پنل مدیریت تعریف کنید."
+            )
+            self.error.show()
         layout.addWidget(self.error)
 
         buttons = QHBoxLayout()
         self.submit = QPushButton("پرداخت آزمایشی و تمدید")
+        self.submit.setEnabled(bool(self.available_plans))
         self.submit.clicked.connect(self._submit)
         cancel = QPushButton("انصراف")
         cancel.setObjectName("secondaryButton")
@@ -310,13 +334,22 @@ class RenewalDialog(QDialog):
         layout.addLayout(buttons)
 
     def _submit(self):
+        selected_plan = self.plan.currentData()
+        if selected_plan is None:
+            self.error.setText("یک پلن فعال برای تمدید انتخاب کنید.")
+            self.error.show()
+            return
         self.error.hide()
         self.submit.setEnabled(False)
         self.submit.setText("در حال پرداخت و تمدید…")
         self.submit_requested.emit({
-            "plan": self.plan.text().strip(),
+            "plan": selected_plan.name,
             "amount": self.amount.value(),
         })
+
+    def _update_plan_price(self, index):
+        selected_plan = self.plan.itemData(index) if index >= 0 else None
+        self.amount.setValue(selected_plan.price if selected_plan is not None else 0)
 
     def operation_failed(self, message):
         self.error.setText(message)
@@ -328,9 +361,10 @@ class RenewalDialog(QDialog):
 class MembersPage(QWidget):
     face_index_refresh_requested = pyqtSignal()
 
-    def __init__(self, service, pool: QThreadPool):
+    def __init__(self, service, pool: QThreadPool, plan_provider=None):
         super().__init__()
         self.service = service
+        self.plan_provider = plan_provider
         self.pool = pool
         self.page = 1
         self.has_next = False
@@ -496,14 +530,20 @@ class MembersPage(QWidget):
         self.notice.show()
         self._update_controls()
         member_id = self.member_ids[row]
-        worker = TaskWorker(self.service.get_member, member_id)
+        worker = TaskWorker(self._member_context, member_id)
         worker.signals.succeeded.connect(self._open_dialog)
         worker.signals.failed.connect(self._load_failed)
         worker.signals.finished.connect(self._finish_load)
         self.pool.start(worker)
 
-    def _open_dialog(self, member):
-        dialog = MemberDialog(member, self)
+    def _member_context(self, member_id):
+        member = self.service.get_member(member_id)
+        plans = self.plan_provider.list_plans() if self.plan_provider else ()
+        return member, plans
+
+    def _open_dialog(self, context):
+        member, plans = context
+        dialog = MemberDialog(member, self, plans=plans)
         dialog.save_requested.connect(
             lambda values: self._save_member(dialog, member.id, values)
         )

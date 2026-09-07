@@ -12,17 +12,26 @@ from PyQt6.QtWidgets import (
 )
 
 
+PERSIAN_DIGITS = str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹")
+
+
+def to_persian_digits(value):
+    return str(value).translate(PERSIAN_DIGITS)
+
+
 class Sidebar(QFrame):
     navigation_requested = pyqtSignal(str)
+    logout_requested = pyqtSignal()
 
     ITEMS = (
-        ("dashboard", "خانه", "⌂"),
+        ("dashboard", "صفحه عمومی", "⌂"),
+        ("admin", "نمای کلی مدیریت", "▦"),
+        ("pending", "پذیرش سایت", "↻"),
         ("walk_in", "ثبت‌نام حضوری", "+"),
         ("members", "اعضا", "◉"),
-        ("pending", "پذیرش سایت", "↻"),
+        ("coaches", "مربی‌ها", "◇"),
         ("attendance", "ورود اعضا", "→"),
         ("reports", "گزارش‌ها", "▥"),
-        ("admin", "پنل مدیریت", "▦"),
         ("settings", "تنظیمات", "⚙"),
     )
 
@@ -66,7 +75,7 @@ class Sidebar(QFrame):
         layout.addLayout(brand)
         layout.addSpacing(24)
 
-        section = QLabel("مدیریت باشگاه")
+        section = QLabel("بخش مدیریت")
         section.setObjectName("sidebarSection")
         layout.addWidget(section)
         for key, title, symbol in self.ITEMS:
@@ -81,12 +90,32 @@ class Sidebar(QFrame):
             layout.addWidget(button)
         layout.addStretch()
 
+        self.session_label = QLabel("")
+        self.session_label.setObjectName("sessionLabel")
+        self.session_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.session_label.hide()
+        layout.addWidget(self.session_label)
+
+        self.logout_button = QPushButton("خروج از مدیریت")
+        self.logout_button.setObjectName("logoutButton")
+        self.logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.logout_button.clicked.connect(self.logout_requested.emit)
+        self.logout_button.hide()
+        layout.addWidget(self.logout_button)
+
     def select(self, key):
         for page, button in self.buttons.items():
             button.setChecked(page == key)
 
     def set_manager(self, username=None):
-        pass
+        if username:
+            self.session_label.setText(f"مدیر فعال: {username}")
+            self.session_label.show()
+            self.logout_button.show()
+            return
+        self.session_label.clear()
+        self.session_label.hide()
+        self.logout_button.hide()
 
 
 class TopBar(QFrame):
@@ -119,7 +148,9 @@ class TopBar(QFrame):
     def update_date(self):
         now = datetime.now()
         self.date_label.setText(
-            f"{self.WEEKDAYS[now.weekday()]}  •  {now:%Y/%m/%d}  •  {now:%H:%M}"
+            to_persian_digits(
+                f"{self.WEEKDAYS[now.weekday()]}  •  {now:%Y/%m/%d}  •  {now:%H:%M}"
+            )
         )
 
     def set_dashboard(self, is_dashboard):

@@ -1,12 +1,18 @@
 import json
 import base64
+from datetime import timedelta
+from unittest.mock import MagicMock, patch
+from urllib.error import URLError
 
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
-from django.test import Client, TestCase
+from django.core.cache import cache
+from django.test import Client, TestCase, override_settings
+from django.utils import timezone
 
-from .models import CoachProfile, LegacyMember, MembershipApplication, Plan, User, WorkoutProgram
+from .models import CoachProfile, LegacyMember, MembershipApplication, Plan, SignupOTP, User, WorkoutProgram
 from .hashers import LifeBoxLegacyPasswordHasher
+from .views import signup_otp_digest
 
 
 class LegacyPasswordTests(TestCase):
@@ -41,13 +47,25 @@ class MembershipFlowTests(TestCase):
 
         return connection
 
-    def signup(self, mobile="09121112233", national_id="0012345678"):
+    def signup(self, mobile="09121112233", national_id="0012345678", otp_code="12345"):
+        SignupOTP.objects.update_or_create(
+            mobile=mobile,
+            defaults={
+                "code_digest": signup_otp_digest(mobile, "12345"),
+                "expires_at": timezone.now() + timedelta(minutes=3),
+                "last_sent_at": timezone.now(),
+                "window_started_at": timezone.now(),
+                "send_count": 1,
+                "failed_attempts": 0,
+            },
+        )
         return self.client.post(
             "/api/signup",
             data=json.dumps(
                 {
                     "fullName": "کاربر آزمایشی",
                     "mobile": mobile,
+                    "otpCode": otp_code,
                     "nationalId": national_id,
                     "address": "تهران، خیابان آزمایش",
                     "planId": self.plan.id,
@@ -61,6 +79,7 @@ class MembershipFlowTests(TestCase):
     def test_new_web_signup_stays_pending_until_fittrack_activation(self):
         response = self.signup()
         self.assertEqual(response.status_code, 201)
+        self.assertFalse(SignupOTP.objects.filter(mobile="09121112233").exists())
         self.assertEqual(response.json()["user"]["status"], User.Status.PENDING)
         application = MembershipApplication.objects.get(user__mobile="09121112233")
 
@@ -109,6 +128,12 @@ class MembershipFlowTests(TestCase):
         response = self.client.get("/api/desktop/applications")
         self.assertEqual(response.status_code, 401)
 
+    def test_signup_rejects_wrong_otp(self):
+        response = self.signup(mobile="09125556677", national_id="0012345688", otp_code="99999")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["field"], "otpCode")
+        self.assertFalse(User.objects.filter(mobile="09125556677").exists())
+
     def test_desktop_activation_uses_bearer_token_without_browser_csrf(self):
         response = self.signup(mobile="09123334455", national_id="0012345680")
         application = MembershipApplication.objects.get(user__mobile="09123334455")
@@ -134,6 +159,59 @@ class MembershipFlowTests(TestCase):
         )
         self.assertEqual(activated.status_code, 200)
 
+
+@override_settings(
+    SMS_IR_API_KEY="test-api-key",
+    SMS_IR_TEMPLATE_ID=511188,
+    SIGNUP_OTP_RESEND_SECONDS=60,
+    SIGNUP_OTP_TTL_SECONDS=180,
+)
+class SignupOTPSendTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    @patch("members.views.secrets.randbelow", return_value=2345)
+    @patch("members.views.urlopen")
+    def test_send_otp_calls_sms_ir_with_expected_payload(self, mocked_urlopen, _mocked_random):
+        provider_response = MagicMock()
+        provider_response.read.return_value = json.dumps(
+            {"data": {"messageId": 695030637, "cost": 1}, "status": 1, "message": "موفق"},
+            ensure_ascii=False,
+        ).encode("utf-8")
+        mocked_urlopen.return_value.__enter__.return_value = provider_response
+
+        response = self.client.post(
+            "/api/signup/otp/send",
+            data=json.dumps({"mobile": "۰۹۱۹۹۹۰۰۲۲۱"}, ensure_ascii=False),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        sent_request = mocked_urlopen.call_args.args[0]
+        self.assertEqual(sent_request.full_url, "https://api.sms.ir/v1/send/verify")
+        self.assertEqual(sent_request.get_header("X-api-key"), "test-api-key")
+        self.assertEqual(
+            json.loads(sent_request.data.decode("utf-8")),
+            {
+                "mobile": "09199900221",
+                "templateId": 511188,
+                "parameters": [{"name": "Code", "value": "12345"}],
+            },
+        )
+        challenge = SignupOTP.objects.get(mobile="09199900221")
+        self.assertEqual(challenge.code_digest, signup_otp_digest("09199900221", "12345"))
+        self.assertNotIn("12345", challenge.code_digest)
+
+    @patch("members.views.urlopen", side_effect=URLError("offline"))
+    def test_provider_failure_does_not_leave_a_valid_code(self, _mocked_urlopen):
+        response = self.client.post(
+            "/api/signup/otp/send",
+            data=json.dumps({"mobile": "09199900222"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 502)
+        challenge = SignupOTP.objects.get(mobile="09199900222")
+        self.assertEqual(challenge.code_digest, "")
 
 class CoachPanelFlowTests(TestCase):
     @classmethod

@@ -65,13 +65,121 @@ QPushButton#navButton {
     padding: 9px 13px;
 }
 QPushButton#navButton:hover { background: #fff8cf; color: #171714; }
-QPushButton#navButton:checked { background: #f2cf00; color: #171714; }
+QPushButton#navButton:checked { background: #f2cf00; color: #171714; border-right: 4px solid #171714; }
 QLabel#sessionLabel { background: #f2f2ed; color: #65655e; border-radius: 9px; padding: 10px; font-size: 12px; }
+QPushButton#logoutButton { min-height: 42px; background: #ffffff; color: #343430; border: 1px solid #d9d9d2; }
+QPushButton#logoutButton:hover { background: #fff4f1; color: #8d2d24; border-color: #e3b4ad; }
 
 QLabel#pageTitle { color: #171714; font-size: 27px; font-weight: 900; }
 QLabel#pageSubtitle { color: #77776f; font-size: 12px; }
 QLabel#sectionTitle { color: #242420; font-size: 18px; font-weight: 900; }
 QLabel#pageNotice { color: #817000; padding: 6px; }
+
+/* Public member kiosk */
+QScrollArea#dashboardScroll, QWidget#dashboardContent, QWidget#kioskShell {
+    background: #f7f7f3;
+    border: none;
+}
+QLabel#kioskBrandLogo { background: #ffffff; border: 1px solid #dfdfd8; border-radius: 18px; }
+QLabel#kioskBrandName { color: #171714; font-family: "Segoe UI"; font-size: 22px; font-weight: 900; letter-spacing: 1px; }
+QLabel#kioskBrandTagline { color: #77776f; font-size: 12px; }
+QLabel#kioskClock {
+    min-height: 28px;
+    padding: 9px 16px;
+    background: #ffffff;
+    color: #4f4f49;
+    border: 1px solid #deded7;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 800;
+}
+QLabel#kioskTitle { color: #171714; font-size: 44px; font-weight: 900; }
+QLabel#kioskSubtitle { color: #686861; font-size: 16px; }
+QFrame#kioskMetric {
+    min-height: 82px;
+    background: #ffffff;
+    border: 1px solid #dfdfd8;
+    border-radius: 12px;
+}
+QLabel#kioskMetricValue { color: #171714; font-size: 28px; font-weight: 900; }
+QLabel#kioskMetricLabel { color: #77776f; font-size: 12px; }
+
+QFrame#kioskPrimaryAction {
+    background: #f2cf00;
+    border: 2px solid #c9aa00;
+    border-radius: 22px;
+}
+QFrame#kioskPrimaryAction:hover { background: #ffda0a; border-color: #171714; }
+QFrame#kioskPrimaryAction:focus { border: 5px solid #171714; }
+QLabel#kioskPrimaryIcon {
+    background: transparent;
+    border: none;
+}
+QLabel#kioskPrimaryEyebrow { color: #5c4d00; font-size: 17px; font-weight: 900; }
+QLabel#kioskPrimaryTitle { color: #171714; font-size: 48px; font-weight: 900; }
+QLabel#kioskPrimaryDescription { color: #423900; font-size: 17px; }
+QLabel#kioskPrimaryHint {
+    min-height: 40px;
+    padding: 8px 16px;
+    background: #171714;
+    color: #ffffff;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+QFrame#kioskSecondaryAction {
+    background: #ffffff;
+    border: 1px solid #d9d9d2;
+    border-radius: 20px;
+}
+QFrame#kioskSecondaryAction:hover { background: #fffbee; border-color: #bca000; }
+QFrame#kioskSecondaryAction:focus { border: 4px solid #171714; }
+QLabel#kioskSecondaryIcon {
+    background: transparent;
+    border: none;
+}
+QLabel#kioskSecondaryEyebrow { color: #8a7600; font-size: 12px; font-weight: 900; }
+QLabel#kioskSecondaryTitle { color: #171714; font-size: 30px; font-weight: 900; }
+QLabel#kioskSecondaryDescription { color: #686861; font-size: 14px; }
+QLabel#kioskSecondaryHint {
+    color: #171714;
+    background: #ffffff;
+    border: 2px solid #dfbd00;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+QFrame#kioskQrCard { background: #171714; border: 1px solid #171714; border-radius: 20px; }
+QLabel#kioskQrEyebrow { color: #f2cf00; font-size: 12px; font-weight: 900; }
+QLabel#kioskQrTitle { color: #ffffff; font-size: 32px; font-weight: 900; }
+QLabel#kioskQrHint { color: #d2d2ca; font-size: 14px; }
+QLabel#kioskQrNetwork {
+    padding: 8px 10px;
+    background: #2c2c28;
+    color: #f1f1ea;
+    border-radius: 9px;
+    font-size: 11px;
+}
+QLabel#kioskQrImage { background: #ffffff; border: 6px solid #f2cf00; border-radius: 16px; }
+QLabel#kioskHelpText { color: #77776f; font-size: 12px; }
+QFrame#kioskFooter {
+    min-height: 58px;
+    background: #ffffff;
+    border: 1px solid #dfdfd8;
+    border-radius: 14px;
+}
+QPushButton#kioskManagerButton {
+    min-width: 150px;
+    min-height: 36px;
+    background: transparent;
+    color: #4f4f49;
+    border: 1px solid #d5d5ce;
+    border-radius: 11px;
+}
+QPushButton#kioskManagerButton:hover { background: #ffffff; color: #171714; border-color: #9e9e96; }
+QPushButton#kioskManagerButton:focus { border: 3px solid #171714; }
 
 QFrame#statCard { background: #ffffff; border: 1px solid #dfdfd8; border-radius: 13px; min-height: 92px; }
 QLabel#statIcon { background: #fff3ab; color: #605000; border-radius: 10px; font-size: 20px; font-weight: 900; }

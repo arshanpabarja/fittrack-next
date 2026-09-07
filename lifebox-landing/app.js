@@ -184,6 +184,49 @@ function initSignup() {
   const form = $("#signup-form");
   if (!form) return;
   const planSelect = form.elements.planId;
+  const otpButton = $("[data-send-otp]", form);
+  const otpStatus = $("[data-otp-status]", form);
+  let otpCountdown;
+
+  const startOtpCountdown = (seconds) => {
+    window.clearInterval(otpCountdown);
+    let remaining = Math.max(1, Number(seconds) || 60);
+    const render = () => {
+      otpButton.disabled = remaining > 0;
+      otpButton.textContent = remaining > 0 ? `ارسال دوباره (${toFa(remaining)})` : "ارسال دوباره";
+    };
+    render();
+    otpCountdown = window.setInterval(() => {
+      remaining -= 1;
+      render();
+      if (remaining <= 0) window.clearInterval(otpCountdown);
+    }, 1000);
+  };
+
+  otpButton.addEventListener("click", async () => {
+    clearFieldErrors(form);
+    setFormMessage(form);
+    otpStatus.textContent = "";
+    const mobile = normalizeDigits(form.mobile.value);
+    form.mobile.value = mobile;
+    if (!/^09\d{9}$/.test(mobile)) {
+      setFieldError(form, "mobile", "شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.");
+      return;
+    }
+    setBusy(otpButton, true, "در حال ارسال...");
+    try {
+      const result = await api("/api/signup/otp/send", { method: "POST", body: JSON.stringify({ mobile }) });
+      otpStatus.textContent = result.message;
+      setFormMessage(form, result.message, "success");
+      form.otpCode.focus();
+      startOtpCountdown(result.resendAfter);
+    } catch (error) {
+      if (error.field) setFieldError(form, error.field, error.message);
+      else setFormMessage(form, error.message);
+      setBusy(otpButton, false);
+    }
+  });
+
   api("/api/plans")
     .then(({ plans }) => {
       planSelect.innerHTML = '<option value="">یک پلن را انتخاب کنید</option>';
@@ -205,6 +248,7 @@ function initSignup() {
     const data = {
       fullName: form.fullName.value.trim(),
       mobile: normalizeDigits(form.mobile.value),
+      otpCode: normalizeDigits(form.otpCode.value),
       nationalId: normalizeDigits(form.nationalId.value),
       address: form.address.value.trim(),
       planId: form.planId.value,
@@ -216,6 +260,10 @@ function initSignup() {
     }
     if (!/^09\d{9}$/.test(data.mobile)) {
       setFieldError(form, "mobile", "شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.");
+      return;
+    }
+    if (!/^\d{5}$/.test(data.otpCode)) {
+      setFieldError(form, "otpCode", "کد تأیید پنج‌رقمی را وارد کنید.");
       return;
     }
     if (!/^\d{10}$/.test(data.nationalId)) {

@@ -101,6 +101,21 @@ class MembershipApplication(models.Model):
         self.save(update_fields=["status", "legacy_member_id", "paid_amount", "face_registered", "activated_at"])
 
 
+class SignupOTP(models.Model):
+    mobile = models.CharField(max_length=11, unique=True, db_index=True)
+    code_digest = models.CharField(max_length=64)
+    expires_at = models.DateTimeField()
+    last_sent_at = models.DateTimeField()
+    window_started_at = models.DateTimeField()
+    send_count = models.PositiveSmallIntegerField(default=1)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.mobile
+
+
 class CoachProfile(models.Model):
     user = models.OneToOneField(
         User,
@@ -148,6 +163,17 @@ class WorkoutProgram(models.Model):
 
     def __str__(self):
         return f"{self.title} — {self.member.get_full_name() or self.member.mobile}"
+
+
+class LoginEvent(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="login_events")
+    occurred_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+
+class OwnerAudit(models.Model):
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    action = models.CharField(max_length=160)
+    occurred_at = models.DateTimeField(default=timezone.now, db_index=True)
 
 
 class LegacyMember(models.Model):

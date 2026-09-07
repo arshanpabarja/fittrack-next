@@ -15,7 +15,9 @@ The workflow is:
 Before public deployment:
 
 1. Set strong `DJANGO_SECRET_KEY` and `FITTRACK_DESKTOP_API_TOKEN` values in both the Django and desktop environments.
-2. Set `DJANGO_DEBUG=0`, configure `DJANGO_ALLOWED_HOSTS`, and put Django behind HTTPS and a production WSGI/ASGI server.
-3. Configure `DJANGO_CSRF_TRUSTED_ORIGINS` with the final HTTPS origin.
-4. Back up `database/gym_users.db` regularly. The first pre-Django backup is in `database/backups`.
-5. Replace the development admin password and run Django's deployment checks.
+2. Set `SMS_IR_API_KEY` to a fresh SMS.ir key and `SMS_IR_TEMPLATE_ID=511188`. Never expose the API key in browser code or commit `.env`.
+3. Set `DJANGO_DEBUG=0`, configure `DJANGO_ALLOWED_HOSTS`, and put Django behind HTTPS and a production WSGI/ASGI server.
+4. Configure `DJANGO_CSRF_TRUSTED_ORIGINS` with the final HTTPS origin.
+5. Run `python web_portal/manage.py migrate` before starting the updated site.
+6. Back up `database/gym_users.db` regularly. The first pre-Django backup is in `database/backups`.
+7. Replace the development admin password and run Django's deployment checks.

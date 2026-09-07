@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from PyQt6.QtCore import Qt, QThreadPool, QTimer
+from PyQt6.QtCore import Qt, QThreadPool, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QDialog,
     QFrame,
@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 
 from app.ui.face_capture import FaceCaptureDialog
+from app.ui.pages.members import RenewalDialog
 from app.ui.widgets import TouchCard
 from app.ui.workers import TaskWorker
 
@@ -21,6 +22,8 @@ from app.ui.workers import TaskWorker
 class CheckInSuccessDialog(QDialog):
     def __init__(self, result, parent=None):
         super().__init__(parent)
+        self.result = result
+        self.wants_renewal = False
         self.setWindowTitle("ورود موفق")
         self.setModal(True)
         self.setFixedSize(660, 520)
@@ -77,26 +80,52 @@ class CheckInSuccessDialog(QDialog):
             info.addWidget(box, index // 2, index % 2)
         layout.addLayout(info)
 
-        if remaining is not None and remaining < 0:
-            renewal = QLabel("مهلت تمدید شما شروع شده است؛ لطفاً عضویت را تمدید کنید.")
+        if remaining is not None and remaining <= 0:
+            renewal = QLabel(
+                "جلسات عضویت شما تمام شده است؛ می‌توانید همین حالا پلن را انتخاب و عضویت را تمدید کنید."
+            )
             renewal.setObjectName("checkInRenewalWarning")
             renewal.setAlignment(Qt.AlignmentFlag.AlignCenter)
             renewal.setWordWrap(True)
             layout.addWidget(renewal)
+        actions = QHBoxLayout()
         close = QPushButton("متوجه شدم")
         close.setMinimumHeight(56)
         close.clicked.connect(self.accept)
-        layout.addWidget(close)
+        actions.addWidget(close)
+        if result.member.renewal_required:
+            renew = QPushButton("تمدید عضویت")
+            renew.setObjectName("renewButton")
+            renew.setMinimumHeight(56)
+            renew.clicked.connect(self._choose_renewal)
+            actions.addWidget(renew)
+        layout.addLayout(actions)
         QTimer.singleShot(15_000, self.accept)
+
+    def _choose_renewal(self):
+        self.wants_renewal = True
+        self.accept()
 
 
 class AttendancePage(QWidget):
-    def __init__(self, service, pool: QThreadPool, models_dir, camera_indices):
+    completed = pyqtSignal()
+
+    def __init__(
+        self,
+        service,
+        pool: QThreadPool,
+        models_dir,
+        camera_indices,
+        member_service=None,
+        plan_provider=None,
+    ):
         super().__init__()
         self.service = service
         self.pool = pool
         self.models_dir = models_dir
         self.camera_indices = camera_indices
+        self.member_service = member_service
+        self.plan_provider = plan_provider
         self.busy = False
         self._build()
 
@@ -207,7 +236,66 @@ class AttendancePage(QWidget):
 
     def _show_result(self, result):
         self.refresh_summary()
-        CheckInSuccessDialog(result, self).exec()
+        dialog = CheckInSuccessDialog(result, self)
+        dialog.exec()
+        if dialog.wants_renewal:
+            self._load_renewal(result.member.id)
+        else:
+            self.completed.emit()
+
+    def _load_renewal(self, member_id):
+        if self.member_service is None or self.plan_provider is None:
+            QMessageBox.warning(
+                self,
+                "تمدید آماده نیست",
+                "سرویس تمدید عضویت در این دستگاه پیکربندی نشده است.",
+            )
+            self.completed.emit()
+            return
+        worker = TaskWorker(self._renewal_context, member_id)
+        worker.signals.succeeded.connect(self._open_renewal)
+        worker.signals.failed.connect(self._renewal_load_failed)
+        self.pool.start(worker)
+
+    def _renewal_context(self, member_id):
+        return self.member_service.get_member(member_id), self.plan_provider.list_plans()
+
+    def _open_renewal(self, context):
+        member, plans = context
+        dialog = RenewalDialog(member, self, plans=plans)
+        dialog.submit_requested.connect(
+            lambda values: self._renew_member(dialog, member.id, values)
+        )
+        dialog.exec()
+        self.completed.emit()
+
+    def _renew_member(self, dialog, member_id, values):
+        worker = TaskWorker(
+            self.member_service.renew_member,
+            member_id,
+            values["plan"],
+            values["amount"],
+        )
+        worker.signals.succeeded.connect(
+            lambda result: self._renewal_succeeded(dialog, result)
+        )
+        worker.signals.failed.connect(dialog.operation_failed)
+        self.pool.start(worker)
+
+    def _renewal_succeeded(self, dialog, result):
+        dialog.accept()
+        QMessageBox.information(
+            self,
+            "عضویت تمدید شد",
+            f"عضویت {result.member.full_name} با موفقیت تمدید شد.\n"
+            f"جلسات باقی‌مانده: {result.member.remaining_sessions}\n"
+            f"شروع پلن: {result.membership_started_at}\n"
+            f"رسید پرداخت: {result.payment_reference}",
+        )
+
+    def _renewal_load_failed(self, message):
+        QMessageBox.warning(self, "تمدید آماده نشد", message)
+        self.completed.emit()
 
     def _failed(self, message):
         QMessageBox.warning(self, "عملیات انجام نشد", message)

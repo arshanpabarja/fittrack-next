@@ -42,7 +42,9 @@ class PlanDialog(QDialog):
 
         title = QLabel("ویرایش پلن عضویت" if plan else "پلن عضویت جدید")
         title.setObjectName("dialogTitle")
-        hint = QLabel("این تغییر هم در سایت و هم در ثبت‌نام حضوری Life Box اعمال می‌شود.")
+        hint = QLabel(
+            "این تغییر مستقیماً در فهرست پلن‌های باشگاه ذخیره می‌شود و در ثبت‌نام حضوری و تمدید قابل انتخاب است."
+        )
         hint.setObjectName("pageSubtitle")
         hint.setWordWrap(True)
         layout.addWidget(title)
@@ -194,7 +196,7 @@ class AdminPanelPage(QWidget):
         layout.addWidget(self.activity_table)
 
         plan_head = QHBoxLayout()
-        plan_title = QLabel("پلن‌های عضویت")
+        plan_title = QLabel("پلن‌های باشگاه و ثبت‌نام حضوری")
         plan_title.setObjectName("sectionTitle")
         add_plan = QPushButton("+  ساخت پلن جدید")
         add_plan.clicked.connect(lambda: self._open_plan(None))
@@ -263,7 +265,7 @@ class AdminPanelPage(QWidget):
         if self.plans_busy:
             return
         self.plans_busy = True
-        self.plan_notice.setText("در حال همگام‌سازی پلن‌ها با سایت…")
+        self.plan_notice.setText("در حال خواندن پلن‌های فعال از دیتابیس محلی…")
         worker = TaskWorker(self.plans_service.load)
         worker.signals.succeeded.connect(self._render_plans)
         worker.signals.failed.connect(lambda message: self.plan_notice.setText(message))
@@ -313,5 +315,9 @@ class AdminPanelPage(QWidget):
     def _plan_saved(self, dialog, plan):
         dialog.accept()
         self.plans_changed.emit()
-        QMessageBox.information(self, "پلن ذخیره شد", f"پلن «{plan.name}» در Life Box و سایت ذخیره شد.")
+        QMessageBox.information(
+            self,
+            "پلن ذخیره شد",
+            f"پلن «{plan.name}» در فهرست محلی Life Box ذخیره شد.",
+        )
         self.refresh_plans()

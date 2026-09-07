@@ -1,19 +1,26 @@
+import hashlib
+import hmac
 import json
 import re
+import secrets
+from datetime import timedelta
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .models import CoachProfile, LegacyMember, MembershipApplication, Plan, User, WorkoutProgram
+from .models import CoachProfile, LegacyMember, MembershipApplication, Plan, SignupOTP, User, WorkoutProgram, LoginEvent, OwnerAudit
 
 
 PUBLIC_ROOT = settings.BASE_DIR.parent / "lifebox-landing"
@@ -34,6 +41,64 @@ WEEKDAYS = {
 
 def normalize_digits(value):
     return re.sub(r"\s+", "", str(value or "").translate(DIGITS))
+
+
+def signup_otp_digest(mobile, code):
+    message = f"{mobile}:{code}".encode("utf-8")
+    return hmac.new(settings.SECRET_KEY.encode("utf-8"), message, hashlib.sha256).hexdigest()
+
+
+def _client_ip(request):
+    return request.META.get("REMOTE_ADDR", "unknown")
+
+
+def _ip_otp_limit_reached(request):
+    cache_key = f"signup-otp-ip:{_client_ip(request)}"
+    if cache.add(cache_key, 1, timeout=60 * 60):
+        return False
+    try:
+        return cache.incr(cache_key) > settings.SIGNUP_OTP_MAX_IP_SENDS_PER_HOUR
+    except ValueError:
+        cache.set(cache_key, 1, timeout=60 * 60)
+        return False
+
+
+def _send_signup_otp(mobile, code):
+    if not settings.SMS_IR_API_KEY:
+        raise RuntimeError("SMS_IR_API_KEY is not configured")
+    body = json.dumps(
+        {
+            "mobile": mobile,
+            "templateId": settings.SMS_IR_TEMPLATE_ID,
+            "parameters": [{"name": "Code", "value": code}],
+        }
+    ).encode("utf-8")
+    request = Request(
+        settings.SMS_IR_API_URL,
+        data=body,
+        headers={
+            "X-API-KEY": settings.SMS_IR_API_KEY,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=settings.SMS_IR_TIMEOUT_SECONDS) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        try:
+            result = json.loads(exc.read().decode("utf-8"))
+            provider_message = result.get("message", "")
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            provider_message = ""
+        raise RuntimeError(provider_message or f"SMS.ir HTTP {exc.code}") from exc
+    except (URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError("SMS.ir is unavailable") from exc
+    if not isinstance(result, dict) or result.get("status") != 1 or not isinstance(result.get("data"), dict):
+        message = result.get("message", "SMS.ir rejected the request") if isinstance(result, dict) else "Invalid SMS.ir response"
+        raise RuntimeError(str(message))
+    return result["data"]
 
 
 def body_json(request):
@@ -106,6 +171,8 @@ def reconcile_pending_user(user):
 
 @ensure_csrf_cookie
 def page(request, name):
+    if name == 'admin.html' and not _is_admin(request.user):
+        return redirect('/login.html')
     if name not in PUBLIC_PAGES or not (PUBLIC_ROOT / name).is_file():
         raise Http404
     response = render(request, name)
@@ -150,6 +217,67 @@ def plans_api(request):
 
 
 @require_POST
+def signup_otp_send_api(request):
+    payload = body_json(request)
+    if payload is None:
+        return error("اطلاعات ارسال‌شده معتبر نیست.")
+    mobile = normalize_digits(payload.get("mobile"))
+    if not MOBILE_RE.fullmatch(mobile):
+        return error("شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.", field="mobile")
+    if User.objects.filter(mobile=mobile).exists():
+        return error("با این شماره موبایل قبلاً حساب ساخته شده است.", status=409, field="mobile")
+    if _ip_otp_limit_reached(request):
+        return error("تعداد درخواست‌های ارسال کد بیش از حد مجاز است؛ یک ساعت دیگر دوباره تلاش کنید.", status=429)
+
+    now = timezone.now()
+    challenge = SignupOTP.objects.filter(mobile=mobile).first()
+    if challenge:
+        resend_at = challenge.last_sent_at + timedelta(seconds=settings.SIGNUP_OTP_RESEND_SECONDS)
+        if resend_at > now:
+            retry_after = max(1, int((resend_at - now).total_seconds()) + 1)
+            response = error(f"برای ارسال دوباره کد {retry_after} ثانیه صبر کنید.", status=429, field="otpCode")
+            response["Retry-After"] = str(retry_after)
+            return response
+        if challenge.window_started_at + timedelta(hours=1) <= now:
+            challenge.send_count = 0
+            challenge.window_started_at = now
+        if challenge.send_count >= settings.SIGNUP_OTP_MAX_SENDS_PER_HOUR:
+            return error("حداکثر تعداد ارسال کد برای این شماره انجام شده است؛ یک ساعت دیگر دوباره تلاش کنید.", status=429, field="otpCode")
+
+    code = str(10_000 + secrets.randbelow(90_000))
+    digest = signup_otp_digest(mobile, code)
+    expires_at = now + timedelta(seconds=settings.SIGNUP_OTP_TTL_SECONDS)
+    if challenge:
+        challenge.code_digest = digest
+        challenge.expires_at = expires_at
+        challenge.last_sent_at = now
+        challenge.send_count += 1
+        challenge.failed_attempts = 0
+        challenge.save()
+    else:
+        challenge = SignupOTP.objects.create(
+            mobile=mobile,
+            code_digest=digest,
+            expires_at=expires_at,
+            last_sent_at=now,
+            window_started_at=now,
+        )
+    try:
+        _send_signup_otp(mobile, code)
+    except RuntimeError:
+        SignupOTP.objects.filter(pk=challenge.pk, code_digest=digest).update(code_digest="", expires_at=now)
+        return error("ارسال پیامک انجام نشد؛ کمی بعد دوباره تلاش کنید.", status=502, field="otpCode")
+    return JsonResponse(
+        {
+            "ok": True,
+            "message": "کد تأیید برای شما پیامک شد.",
+            "expiresIn": settings.SIGNUP_OTP_TTL_SECONDS,
+            "resendAfter": settings.SIGNUP_OTP_RESEND_SECONDS,
+        }
+    )
+
+
+@require_POST
 def signup_api(request):
     payload = body_json(request)
     if payload is None:
@@ -159,11 +287,14 @@ def signup_api(request):
     national_id = normalize_digits(payload.get("nationalId"))
     address = re.sub(r"\s+", " ", str(payload.get("address", ""))).strip()[:500]
     password = str(payload.get("password", ""))
+    otp_code = normalize_digits(payload.get("otpCode"))
     plan_id = payload.get("planId")
     if len(full_name) < 3:
         return error("نام و نام خانوادگی را کامل وارد کنید.", field="fullName")
     if not MOBILE_RE.fullmatch(mobile):
         return error("شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.", field="mobile")
+    if not re.fullmatch(r"\d{5}", otp_code):
+        return error("کد تأیید پنج‌رقمی را وارد کنید.", field="otpCode")
     if not NATIONAL_ID_RE.fullmatch(national_id):
         return error("کد ملی باید دقیقاً ۱۰ رقم باشد.", field="nationalId")
     if len(address) < 8:
@@ -180,6 +311,19 @@ def signup_api(request):
     legacy = find_legacy_member(mobile)
     try:
         with transaction.atomic():
+            challenge = SignupOTP.objects.select_for_update().filter(mobile=mobile).first()
+            now = timezone.now()
+            if not challenge or not challenge.code_digest or challenge.expires_at <= now:
+                return error("کد تأیید منقضی شده است؛ کد جدیدی دریافت کنید.", field="otpCode")
+            if challenge.failed_attempts >= settings.SIGNUP_OTP_MAX_ATTEMPTS:
+                return error("تعداد تلاش‌های ناموفق بیش از حد مجاز است؛ کد جدیدی دریافت کنید.", status=429, field="otpCode")
+            expected = signup_otp_digest(mobile, otp_code)
+            if not hmac.compare_digest(challenge.code_digest, expected):
+                challenge.failed_attempts += 1
+                if challenge.failed_attempts >= settings.SIGNUP_OTP_MAX_ATTEMPTS:
+                    challenge.code_digest = ""
+                challenge.save(update_fields=["failed_attempts", "code_digest", "updated_at"])
+                return error("کد تأیید درست نیست.", field="otpCode")
             user = User.objects.create_user(
                 mobile=mobile,
                 password=password,
@@ -197,6 +341,7 @@ def signup_api(request):
                 face_registered=bool(legacy),
                 activated_at=timezone.now() if legacy else None,
             )
+            challenge.delete()
     except IntegrityError:
         return error("با این شماره موبایل یا کد ملی قبلاً حساب ساخته شده است.", status=409, field="mobile")
     login(request, user)
@@ -207,12 +352,18 @@ def signup_api(request):
 def login_api(request):
     payload = body_json(request) or {}
     mobile = normalize_digits(payload.get("mobile"))
+    limit_key = "login-attempt:" + hashlib.sha256((mobile + _client_ip(request)).encode()).hexdigest()
+    if cache.get(limit_key, 0) >= 10:
+        return error("تلاش‌های ورود بیش از حد است؛ ۱۵ دقیقه بعد دوباره تلاش کنید.", status=429)
     user = authenticate(request, mobile=mobile, password=str(payload.get("password", "")))
     if not user:
+        cache.set(limit_key, cache.get(limit_key, 0) + 1, 900)
         return error("شماره موبایل یا رمز عبور درست نیست.", status=401)
     if user.status == User.Status.SUSPENDED:
         return error("این حساب تعلیق شده است؛ با مدیریت تماس بگیرید.", status=403)
     login(request, user)
+    cache.delete(limit_key)
+    LoginEvent.objects.create(user=user)
     return JsonResponse({"ok": True, "user": public_user(user)})
 
 
@@ -226,13 +377,16 @@ def logout_api(request):
 def me_api(request):
     if not request.user.is_authenticated:
         return error("برای ادامه وارد حساب شوید.", status=401)
+    if request.user.status == User.Status.SUSPENDED:
+        logout(request)
+        return error('این حساب تعلیق شده است.', status=403)
     reconcile_pending_user(request.user)
     request.user.refresh_from_db()
     return JsonResponse({"ok": True, "user": public_user(request.user)})
 
 
 def _is_admin(user):
-    return user.is_authenticated and (user.is_staff or user.role == User.Role.ADMIN)
+    return user.is_authenticated and user.is_active and user.status == User.Status.ACTIVE and (user.is_superuser or user.role == User.Role.ADMIN)
 
 
 def _is_coach(user):
@@ -277,10 +431,11 @@ def admin_user_status_api(request, user_id):
     user = User.objects.filter(pk=user_id).first()
     if not user:
         return error("کاربر پیدا نشد.", status=404)
-    if user.pk == request.user.pk:
+    if user.pk == request.user.pk or user.role == User.Role.ADMIN:
         return error("نمی‌توانید حساب خودتان را تعلیق کنید.")
     user.status = status
     user.save(update_fields=["status"])
+    OwnerAudit.objects.create(actor=request.user, action=f'تغییر وضعیت حساب {user.pk}: {status}')
     return JsonResponse({"ok": True, "status": status})
 
 

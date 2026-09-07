@@ -1,9 +1,16 @@
 from django.urls import path, re_path
 
-from . import views
+from . import views, owner
 
 
 urlpatterns = [
+    path('api/owner/members', owner.members),
+    path('api/owner/members/<str:source>/<int:member_id>', owner.member),
+    path('api/owner/activity', owner.activity),
+    path('api/owner/plans', owner.plans),
+    path('api/owner/plans/<int:plan_id>', owner.plans),
+    path('owner.js', views.public_file, {'name': 'owner.js'}),
+    path('owner.css', views.public_file, {'name': 'owner.css'}),
     path("", views.page, {"name": "index.html"}),
     path("index.html", views.page, {"name": "index.html"}),
     path("coaches.html", views.page, {"name": "coaches.html"}),
@@ -18,6 +25,7 @@ urlpatterns = [
     re_path(r"^assets/(?P<name>.+)$", views.asset_file),
     path("api/health", views.health),
     path("api/plans", views.plans_api),
+    path("api/signup/otp/send", views.signup_otp_send_api),
     path("api/signup", views.signup_api),
     path("api/login", views.login_api),
     path("api/logout", views.logout_api),

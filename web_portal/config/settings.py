@@ -15,6 +15,10 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_FITTRACK_DB_PATH = BASE_DIR.parent.parent / 'database' / 'gym_users.db'
+FITTRACK_DB_PATH = Path(
+    os.getenv('FITTRACK_DB_PATH', str(DEFAULT_FITTRACK_DB_PATH))
+).resolve()
 
 
 # Quick-start development settings - unsuitable for production
@@ -78,7 +82,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR.parent / 'database' / 'gym_users.db',
+        'NAME': FITTRACK_DB_PATH,
         'OPTIONS': {'timeout': 20},
     }
 }
@@ -108,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'fa-ir'
 
-TIME_ZONE = os.getenv('DJANGO_TIME_ZONE', 'UTC')
+TIME_ZONE = os.getenv('DJANGO_TIME_ZONE', 'Asia/Tehran')
 
 USE_I18N = True
 
@@ -133,6 +137,15 @@ CSRF_COOKIE_SAMESITE = 'Strict'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 FITTRACK_DESKTOP_API_TOKEN = os.getenv('FITTRACK_DESKTOP_API_TOKEN', 'dev-fittrack-desktop-token-change-before-public')
+SMS_IR_API_URL = os.getenv('SMS_IR_API_URL', 'https://api.sms.ir/v1/send/verify')
+SMS_IR_API_KEY = os.getenv('SMS_IR_API_KEY', '').strip()
+SMS_IR_TEMPLATE_ID = int(os.getenv('SMS_IR_TEMPLATE_ID', '511188'))
+SMS_IR_TIMEOUT_SECONDS = int(os.getenv('SMS_IR_TIMEOUT_SECONDS', '10'))
+SIGNUP_OTP_TTL_SECONDS = int(os.getenv('SIGNUP_OTP_TTL_SECONDS', '180'))
+SIGNUP_OTP_RESEND_SECONDS = int(os.getenv('SIGNUP_OTP_RESEND_SECONDS', '60'))
+SIGNUP_OTP_MAX_SENDS_PER_HOUR = int(os.getenv('SIGNUP_OTP_MAX_SENDS_PER_HOUR', '5'))
+SIGNUP_OTP_MAX_ATTEMPTS = int(os.getenv('SIGNUP_OTP_MAX_ATTEMPTS', '5'))
+SIGNUP_OTP_MAX_IP_SENDS_PER_HOUR = int(os.getenv('SIGNUP_OTP_MAX_IP_SENDS_PER_HOUR', '20'))
 
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
@@ -143,3 +156,6 @@ PASSWORD_HASHERS = [
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+FITTRACK_PLANS_PATH = Path(os.getenv("FITTRACK_PLANS_PATH", str(FITTRACK_DB_PATH.parent / "plans.json")))
+FITTRACK_ATTENDANCE_PATH = Path(os.getenv("FITTRACK_ATTENDANCE_PATH", str(BASE_DIR.parent / "state" / "fittrack_next.db")))

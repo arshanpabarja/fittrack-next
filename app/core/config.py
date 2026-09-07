@@ -36,15 +36,11 @@ class Settings:
 
 def load_settings():
     package_root = Path(__file__).resolve().parents[2]
-    default_root = (
-        package_root
-        if (package_root / "database").is_dir()
-        else Path(__file__).resolve().parents[3]
-    )
-    root = Path(os.getenv("FITTRACK_ROOT", default_root)).resolve()
+    root = Path(os.getenv("FITTRACK_ROOT", package_root)).resolve()
+    data_dir = Path(os.getenv("FITTRACK_DATA_DIR", root / "database")).resolve()
     return Settings(
         project_root=root,
-        data_dir=root / "database",
+        data_dir=data_dir,
         assets_dir=root / "assets",
         log_dir=package_root / "logs",
         django_base_url=os.getenv(

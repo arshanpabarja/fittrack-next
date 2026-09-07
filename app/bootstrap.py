@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -119,5 +120,8 @@ def run():
     theme_path = Path(__file__).resolve().parent / "ui" / "theme.qss"
     app.setStyleSheet(theme_path.read_text(encoding="utf-8"))
     window = MainWindow(settings, build_services(settings))
-    window.show()
+    if os.getenv("FITTRACK_WINDOWED", "").strip().lower() in {"1", "true", "yes"}:
+        window.show()
+    else:
+        window.showFullScreen()
     return app.exec()

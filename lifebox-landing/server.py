@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 DB_PATH = DATA_DIR / "lifebox_web.db"
 FITTRACK_DB_PATH = Path(
-    os.getenv("FITTRACK_DB_PATH", str(ROOT.parent / "database" / "gym_users.db"))
+    os.getenv("FITTRACK_DB_PATH", str(ROOT.parent.parent / "database" / "gym_users.db"))
 ).resolve()
 HOST = os.getenv("LIFEBOX_HOST", "192.168.100.95")
 PORT = int(os.getenv("LIFEBOX_PORT", "8000"))

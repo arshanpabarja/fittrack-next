@@ -32,6 +32,8 @@ class WalkInSignupService:
             if not isinstance(items, list):
                 continue
             for item in items:
+                if not bool(item.get("is_active", True)):
+                    continue
                 name = str(item.get("name", "")).strip()
                 if not name:
                     continue

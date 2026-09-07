@@ -19,6 +19,7 @@ from app.ui.workers import TaskWorker
 
 class MainWindow(QMainWindow):
     PROTECTED_PAGES = {"members", "pending", "coaches", "reports", "settings", "admin"}
+    PUBLIC_PAGES = {"dashboard", "attendance", "walk_in", "manager_login"}
 
     def __init__(self, settings, services):
         super().__init__()
@@ -34,7 +35,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("Life Box | باشگاه ورزشی لایف‌باکس")
         self.resize(1280, 820)
-        self.setMinimumSize(1050, 700)
+        self.setMinimumSize(900, 650)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
 
         root = QWidget()
@@ -46,6 +47,7 @@ class MainWindow(QMainWindow):
         logo = settings.assets_dir / "icons" / "gym-logo-transparent.png"
         self.sidebar = Sidebar(logo)
         self.sidebar.navigation_requested.connect(self.navigate)
+        self.sidebar.logout_requested.connect(self._manager_logout)
         content = QWidget()
         content.setObjectName("contentArea")
         content_layout = QVBoxLayout(content)
@@ -89,7 +91,11 @@ class MainWindow(QMainWindow):
         )
         walk_in.member_created.connect(self._refresh_face_index)
         self._register("walk_in", walk_in)
-        members = MembersPage(self.services.members, self.pool)
+        members = MembersPage(
+            self.services.members,
+            self.pool,
+            self.services.walk_in,
+        )
         members.face_index_refresh_requested.connect(self._refresh_face_index)
         self._register("members", members)
         pending = PendingApplicationsPage(
@@ -101,12 +107,16 @@ class MainWindow(QMainWindow):
         )
         pending.membership_activated.connect(self._refresh_face_index)
         self._register("pending", pending)
-        self._register("attendance", AttendancePage(
+        attendance = AttendancePage(
             self.services.attendance,
             self.pool,
             self.settings.project_root / "models",
             self.services.camera_indices,
-        ))
+            self.services.members,
+            self.services.walk_in,
+        )
+        attendance.completed.connect(self._attendance_completed)
+        self._register("attendance", attendance)
         self._register("reports", ReportsPage(self.services.reports, self.pool))
         self._register("coaches", CoachesPage(self.services.coaches, self.pool))
         admin = AdminPanelPage(self.services.reports, self.services.plans, self.pool)
@@ -122,12 +132,20 @@ class MainWindow(QMainWindow):
     def navigate(self, key):
         if key not in self.pages:
             return
+        start_public_check_in = (
+            key == "attendance"
+            and self.current_page == "dashboard"
+            and not self.session.manager_authenticated
+        )
+        if key == "dashboard" and self.session.manager_authenticated:
+            self._clear_manager_session()
         if key in self.PROTECTED_PAGES and not self.session.manager_authenticated:
             self.pending_page = key
             login = self.pages["manager_login"]
             login.prepare()
             self.stack.setCurrentWidget(login)
             self.sidebar.select("")
+            self._update_chrome("manager_login")
             self.top_bar.set_dashboard(False)
             return
         if key == "coaches" and self.current_page == "admin":
@@ -137,7 +155,15 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(self.pages[key])
         self.current_page = key
         self.sidebar.select(key)
+        self._update_chrome(key)
         self.top_bar.set_dashboard(key == "dashboard")
+        if start_public_check_in:
+            QTimer.singleShot(0, self.pages["attendance"].capture)
+
+    def _update_chrome(self, key):
+        public_mode = key in self.PUBLIC_PAGES and not self.session.manager_authenticated
+        self.sidebar.setVisible(not public_mode)
+        self.top_bar.setVisible(key != "dashboard")
 
     def _go_back(self):
         destination = self.back_page
@@ -167,6 +193,19 @@ class MainWindow(QMainWindow):
         destination = self.pending_page
         self.pending_page = "dashboard"
         self.navigate(destination)
+
+    def _clear_manager_session(self):
+        self.session.manager_authenticated = False
+        self.session.manager_username = ""
+        self.sidebar.set_manager()
+
+    def _manager_logout(self):
+        self._clear_manager_session()
+        self.navigate("dashboard")
+
+    def _attendance_completed(self):
+        if not self.session.manager_authenticated:
+            self.navigate("dashboard")
 
     def closeEvent(self, event: QCloseEvent):
         self.pool.clear()
