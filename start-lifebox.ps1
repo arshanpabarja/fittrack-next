@@ -2,7 +2,7 @@ param([switch]$CheckOnly)
 $ErrorActionPreference = 'Stop'
 try {
     $projectPath = $PSScriptRoot
-    $pythonPath = Join-Path $projectPath '.venv\Scripts\python.exe'
+    $pythonPath = Join-Path $projectPath '.venv\Scripts\pythonw.exe'
     if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) {
         throw 'Python environment missing. Install Python 3.12, then run: py -3.12 -m venv .venv and .venv\Scripts\python.exe -m pip install -r requirements.txt'
     }
@@ -16,7 +16,9 @@ try {
     } else {
         $pythonArguments = '"' + (Join-Path $projectPath 'launch.py') + '"'
     }
-    $process = Start-Process -FilePath $pythonPath -ArgumentList $pythonArguments -WorkingDirectory $projectPath -WindowStyle Hidden -RedirectStandardError $errorLog -RedirectStandardOutput $outputLog -Wait -PassThru
+    # The application is an interactive GUI. Hiding this child can also hide
+    # its Qt window; pythonw already avoids creating a console window.
+    $process = Start-Process -FilePath $pythonPath -ArgumentList $pythonArguments -WorkingDirectory $projectPath -WindowStyle Normal -RedirectStandardError $errorLog -RedirectStandardOutput $outputLog -Wait -PassThru
     if ($process.ExitCode -ne 0) {
         $details = (Get-Content -LiteralPath $errorLog -Tail 18 -ErrorAction SilentlyContinue) -join [Environment]::NewLine
         throw "Life Box could not start (exit $($process.ExitCode)).`n$details`n`nLog: $errorLog`nIf .venv was copied from another PC, recreate it using README.md."
