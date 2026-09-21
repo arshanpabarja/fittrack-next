@@ -1,6 +1,6 @@
 import re
 
-from app.domain.dates import jalali_now, normalize_membership_datetime
+from app.domain.dates import jalali_now, normalize_membership_datetime, validate_membership_datetime
 from app.domain.errors import ValidationError
 from app.domain.membership import grace_sessions, session_allowance
 from app.domain.models import RenewalResult
@@ -35,7 +35,28 @@ class MemberService:
             raise ValidationError("کد ملی باید ۱۰ رقم باشد.")
         cleaned["first_name"] = cleaned["first_name"].strip()
         cleaned["last_name"] = cleaned["last_name"].strip()
-        return self.repository.update(member_id, cleaned)
+        cleaned.pop("used_sessions", None)
+        if "signup_time" in cleaned:
+            try:
+                cleaned["signup_time"] = validate_membership_datetime(cleaned["signup_time"])
+            except (ValueError, OverflowError) as exc:
+                raise ValidationError("تاریخ ثبت‌نام معتبر نیست؛ مانند ۱۴۰۵/۰۶/۳۰ وارد کنید. ساعت اختیاری است.") from exc
+        if "remaining_sessions" in cleaned:
+            current = self.repository.get(member_id)
+            allowance = session_allowance(cleaned.get("plan", current.plan))
+            if allowance is None:
+                raise ValidationError("برای تغییر جلسات باقی‌مانده، تعداد جلسات را در نام پلن مشخص کنید.")
+            text = str(cleaned.pop("remaining_sessions")).strip().translate(DIGITS)
+            if not re.fullmatch(r"-?\d+", text):
+                raise ValidationError("جلسات باقی‌مانده باید عدد صحیح باشد.")
+            remaining = int(text)
+            if not -1_000_000 <= remaining <= allowance:
+                raise ValidationError(f"جلسات باقی‌مانده نمی‌تواند بیشتر از {allowance} جلسهٔ پلن باشد.")
+            cleaned["used_sessions"] = allowance - remaining
+        updated = self.repository.update(member_id, cleaned)
+        if "used_sessions" in cleaned and updated.remaining_sessions >= 0 and self.membership_repository:
+            self.membership_repository.clear_grace(member_id)
+        return updated
 
     def delete_member(self, member_id):
         return self.repository.delete(member_id)

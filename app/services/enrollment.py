@@ -1,4 +1,5 @@
 from app.domain.errors import FitTrackError, ValidationError
+from app.domain.models import PaymentReceipt
 
 
 class PendingApplicationsService:
@@ -25,6 +26,9 @@ class EnrollmentService:
         return self.workflows.store_face(application_id, embedding, face_image)
 
     def take_payment(self, application):
+        state = self.workflows.get(application.id)
+        if state and state.payment_reference and state.paid_amount >= application.price:
+            return PaymentReceipt(True, state.paid_amount, state.payment_reference, "پرداخت قبلاً ثبت شده است.")
         receipt = self.pos.charge(application.price)
         if not receipt.success:
             raise FitTrackError(receipt.message)
@@ -60,4 +64,3 @@ class EnrollmentService:
             raise
         self.workflows.mark_activated(application.id)
         return member_id
-

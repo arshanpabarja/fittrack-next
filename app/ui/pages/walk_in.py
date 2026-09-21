@@ -148,7 +148,7 @@ class WalkInSignupPage(QWidget):
         self.face_status = QLabel("دوربین پس از ورود به این مرحله خودکار باز می‌شود.")
         self.face_status.setObjectName("workflowStatus")
         self.face_status.setWordWrap(True)
-        self.register_button = QPushButton("پرداخت آزمایشی و ساخت عضو")
+        self.register_button = QPushButton("پرداخت و ساخت عضو")
         self.register_button.setEnabled(False)
         self.register_button.clicked.connect(self._register)
         back = QPushButton("ویرایش اطلاعات")
@@ -271,7 +271,7 @@ class WalkInSignupPage(QWidget):
 
     def _finished(self):
         self.busy = False
-        self.register_button.setText("پرداخت آزمایشی و ساخت عضو")
+        self.register_button.setText("پرداخت و ساخت عضو")
         self.register_button.setEnabled(self.embedding is not None)
 
     def _reset(self):

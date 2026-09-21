@@ -83,7 +83,7 @@ class MembersRepository:
         allowed = {
             "first_name", "last_name", "father_name", "national_id",
             "certificate_no", "address", "mobile", "age", "gender",
-            "plan", "debt", "payment",
+            "plan", "debt", "payment", "signup_time", "used_sessions",
         }
         payload = {key: value for key, value in values.items() if key in allowed}
         if not payload:

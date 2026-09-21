@@ -90,10 +90,10 @@ QLabel#kioskClock {
     color: #4f4f49;
     border: 1px solid #deded7;
     border-radius: 12px;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 800;
 }
-QLabel#kioskTitle { color: #171714; font-size: 44px; font-weight: 900; }
+QLabel#kioskTitle { color: #171714; font-size: 48px; font-weight: 900; }
 QLabel#kioskSubtitle { color: #686861; font-size: 16px; }
 QFrame#kioskMetric {
     min-height: 82px;

@@ -3,10 +3,12 @@ import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
+from unittest.mock import Mock
 
 from app.data.enrollments import EnrollmentRepository
 from app.data.members import MembersRepository
 from app.domain.models import MembershipApplication, PaymentReceipt
+from app.domain.errors import FitTrackError
 from app.services.enrollment import EnrollmentService
 
 from tests.test_repositories import MEMBERS_SCHEMA
@@ -81,6 +83,25 @@ class EnrollmentTests(unittest.TestCase):
         member = self.members.get(member_id)
         self.assertEqual(member.mobile, "09121111111")
         self.assertEqual(member.payment, 2_400_000)
+
+    def test_recorded_payment_is_not_charged_twice(self):
+        service = self._service(StubApi())
+        service.start(self.application)
+        service.pos = Mock()
+        service.pos.charge.return_value = PaymentReceipt(True, self.application.price, "12345", "ok")
+        first = service.take_payment(self.application)
+        second = service.take_payment(self.application)
+        self.assertEqual(first.reference, second.reference)
+        service.pos.charge.assert_called_once_with(self.application.price)
+
+    def test_declined_payment_does_not_mark_application_paid(self):
+        service = self._service(StubApi())
+        service.start(self.application)
+        service.pos = Mock()
+        service.pos.charge.return_value = PaymentReceipt(False, self.application.price, "", "declined")
+        with self.assertRaises(FitTrackError):
+            service.take_payment(self.application)
+        self.assertEqual(self.workflows.get(self.application.id).paid_amount, 0)
 
     def test_retry_after_api_failure_does_not_duplicate_member(self):
         api = StubApi(fail_once=True)

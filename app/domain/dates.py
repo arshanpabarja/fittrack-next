@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 DATE_TIME_RE = re.compile(
@@ -76,3 +76,32 @@ def normalize_membership_datetime(value):
     if hour > 23 or minute > 59 or second > 59:
         return text
     return f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}"
+
+
+def validate_membership_datetime(value):
+    """Validate edited dates strictly; retain the permissive legacy reader above."""
+    text = str(value or "").strip().translate(
+        str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+    )
+    match = DATE_TIME_RE.fullmatch(text)
+    if not match:
+        raise ValueError("Invalid date format")
+    year, month, day = map(int, match.group(1, 2, 3))
+    hour, minute, second = (int(part or 0) for part in match.group(4, 5, 6))
+    datetime(2000, 1, 1, hour, minute, second)
+    if year >= 1700:
+        datetime(year, month, day)
+    else:
+        if not 1200 <= year < 1700 or not 1 <= month <= 12 or not 1 <= day <= 31:
+            raise ValueError("Invalid Jalali date")
+        # Locate Nowruz with the same calendar conversion used for storage,
+        # then round-trip the day offset to reject invalid month/leap days.
+        start = next((datetime(year + 621, 3, d) for d in range(18, 23)
+                      if gregorian_to_jalali(year + 621, 3, d) == (year, 1, 1)), None)
+        offset = (month - 1) * 31 if month <= 6 else 186 + (month - 7) * 30
+        if start is None:
+            raise ValueError("Unsupported Jalali date")
+        candidate = start + timedelta(days=offset + day - 1)
+        if gregorian_to_jalali(candidate.year, candidate.month, candidate.day) != (year, month, day):
+            raise ValueError("Invalid Jalali date")
+    return normalize_membership_datetime(text)

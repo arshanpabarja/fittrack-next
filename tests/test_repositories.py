@@ -111,6 +111,57 @@ class RepositoryTests(unittest.TestCase):
                 "national_id": "0012345678",
             })
 
+    def _edit_values(self, **changes):
+        return {"first_name": "آرش", "last_name": "احمدی", "mobile": "09120000001",
+                "national_id": "0012345678", "plan": "بدنسازی ۱۲ جلسه در ماه", **changes}
+
+    def test_edit_registration_date_and_remaining_sessions(self):
+        repository = MembersRepository(self.members_path)
+        service = MemberService(repository)
+        updated = service.update_member(1, self._edit_values(
+            signup_time="۱۴۰۵/۰۶/۳۰ ۰۹:۱۵", remaining_sessions="۷"))
+        self.assertEqual(updated.signup_time, "1405-06-30 09:15:00")
+        self.assertEqual(updated.used_sessions, 5)
+        self.assertEqual(updated.remaining_sessions, 7)
+        repository.increment_used_sessions(1)
+        self.assertEqual(repository.get(1).remaining_sessions, 6)
+        with closing(sqlite3.connect(self.members_path)) as connection:
+            row = connection.execute("SELECT embedding, face_image, payment FROM users WHERE id = 1").fetchone()
+        self.assertEqual(row, ("[1,2]", b"face-a", 100))
+
+    def test_negative_remaining_sessions_and_correction_clear_old_grace(self):
+        repository = MembersRepository(self.members_path)
+        memberships = MembershipRepository(Path(self.temp.name) / "state.db")
+        service = MemberService(repository, memberships)
+        memberships.begin_grace(1, "1405-06-20")
+        updated = service.update_member(1, self._edit_values(remaining_sessions=-3))
+        self.assertEqual(updated.used_sessions, 15)
+        self.assertTrue(updated.renewal_required)
+        self.assertIsNotNone(memberships.grace_started_at(1))
+        updated = service.update_member(1, self._edit_values(remaining_sessions=5))
+        self.assertEqual(updated.remaining_sessions, 5)
+        self.assertIsNone(memberships.grace_started_at(1))
+
+    def test_invalid_membership_edits_leave_member_unchanged(self):
+        repository = MembersRepository(self.members_path)
+        service = MemberService(repository)
+        original = repository.get(1)
+        for changes in [
+            {"signup_time": ""}, {"signup_time": "1405/07/31"},
+            {"signup_time": "1405/13/01"}, {"signup_time": "1405/06/30 25:00"},
+            {"remaining_sessions": 13}, {"remaining_sessions": 1.5},
+            {"plan": "بدنسازی", "remaining_sessions": 5},
+        ]:
+            with self.subTest(changes=changes), self.assertRaises(ValidationError):
+                service.update_member(1, self._edit_values(**changes))
+            self.assertEqual(repository.get(1), original)
+
+    def test_profile_edit_preserves_date_and_sessions_when_omitted(self):
+        repository = MembersRepository(self.members_path)
+        updated = MemberService(repository).update_member(1, self._edit_values())
+        self.assertEqual(updated.signup_time, "2026-01-01")
+        self.assertEqual(updated.used_sessions, 3)
+
     def test_manager_password_is_verified_with_legacy_hash(self):
         service = AuthService(ManagerRepository(self.manager_path))
         self.assertEqual(service.login("admin", "secret"), "admin")

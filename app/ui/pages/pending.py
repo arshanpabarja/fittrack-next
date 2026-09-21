@@ -77,7 +77,7 @@ class EnrollmentDialog(QDialog):
         self.face_status.setObjectName("workflowStatus")
         self.payment_status = QLabel()
         self.payment_status.setObjectName("workflowStatus")
-        self.payment_button = QPushButton("پرداخت آزمایشی")
+        self.payment_button = QPushButton("پرداخت با کارتخوان")
         self.payment_button.clicked.connect(self.take_payment)
         actions = QHBoxLayout()
         actions.addWidget(self.payment_button)
@@ -154,6 +154,7 @@ class EnrollmentDialog(QDialog):
     def take_payment(self):
         self.error.hide()
         self._set_busy(True)
+        self.payment_status.setText("در انتظار پاسخ کارتخوان؛ لطفاً پرداخت را روی دستگاه انجام دهید…")
         worker = TaskWorker(self.service.take_payment, self.application)
         worker.signals.succeeded.connect(self._payment_complete)
         worker.signals.failed.connect(self._failed)

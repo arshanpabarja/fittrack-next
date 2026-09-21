@@ -15,7 +15,7 @@ from app.data.enrollments import EnrollmentRepository
 from app.data.attendance import AttendanceRepository
 from app.data.preferences import PreferencesRepository
 from app.integrations.django_api import DjangoApiClient
-from app.integrations.pos import FakePosTerminal
+from app.integrations.pos import create_pos_terminal
 from app.integrations.access_control import SimulatedAccessController
 from app.services.auth import AuthService
 from app.services.dashboard import DashboardService
@@ -58,8 +58,7 @@ def build_services(settings):
         locker_count=int(runtime["locker_count"]),
     )
     membership_repository = MembershipRepository(settings.state_database)
-    if runtime["pos_mode"] != "fake":
-        raise RuntimeError("در این نسخه فقط FITTRACK_POS_MODE=fake فعال است.")
+    pos_terminal = create_pos_terminal(runtime)
     plans_service = PlansService(api, settings.data_dir / "plans.json")
     return Services(
         dashboard=DashboardService(
@@ -71,7 +70,7 @@ def build_services(settings):
         members=MemberService(
             members_repository,
             membership_repository,
-            FakePosTerminal(),
+            pos_terminal,
             api,
         ),
         auth=AuthService(ManagerRepository(settings.manager_database)),
@@ -80,7 +79,7 @@ def build_services(settings):
             api,
             workflows,
             members_repository,
-            FakePosTerminal(),
+            pos_terminal,
         ),
         attendance=AttendanceService(
             FaceIndex(members_repository, threshold=float(runtime["face_threshold"])),
@@ -95,7 +94,7 @@ def build_services(settings):
         walk_in=WalkInSignupService(
             settings.data_dir / "plans.json",
             members_repository,
-            FakePosTerminal(),
+            pos_terminal,
         ),
         plans=plans_service,
         camera_indices=camera_indices,

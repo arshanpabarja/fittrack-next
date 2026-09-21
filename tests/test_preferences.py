@@ -8,6 +8,18 @@ from app.services.preferences import PreferencesService
 
 
 class PreferencesTests(unittest.TestCase):
+    def test_real_pos_settings_persist_and_invalid_settings_are_rejected(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as directory:
+            service = PreferencesService(PreferencesRepository(Path(directory) / "state.db"))
+            values = service.load()
+            values.update(pos_mode="real", pos_host="192.168.100.54", pos_port="3030", pos_timeout="60")
+            service.save(values)
+            self.assertEqual(service.load()["pos_mode"], "real")
+            self.assertEqual(service.load()["pos_host"], "192.168.100.54")
+            for key, value in [("pos_mode", "invalid"), ("pos_host", "bad"), ("pos_port", "0"), ("pos_timeout", "0")]:
+                with self.assertRaises(ValidationError):
+                    service.save({**values, key: value})
+
     def test_preferences_are_validated_and_persisted(self):
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as directory:
             service = PreferencesService(
@@ -37,4 +49,3 @@ class PreferencesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

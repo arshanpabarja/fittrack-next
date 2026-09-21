@@ -1,8 +1,9 @@
 from PyQt6.QtCore import Qt, QThreadPool, QTimer
 from PyQt6.QtGui import QCloseEvent
-from PyQt6.QtWidgets import QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
 from app.domain.models import AppSession
+from app.integrations.pos import FakePosTerminal
 from app.ui.pages.dashboard import DashboardPage
 from app.ui.pages.login import ManagerLoginPage
 from app.ui.pages.members import MembersPage
@@ -58,6 +59,11 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.stack.setObjectName("pageStack")
         content_layout.addWidget(self.top_bar)
+        if isinstance(self.services.enrollment.pos, FakePosTerminal):
+            warning = QLabel("حالت آزمایشی کارتخوان فعال است؛ هیچ وجهی از کارت برداشت نمی‌شود.")
+            warning.setWordWrap(True)
+            warning.setStyleSheet("background: #fff3cd; color: #664d03; padding: 12px;")
+            content_layout.addWidget(warning)
         content_layout.addWidget(self.stack, 1)
         layout.addWidget(self.sidebar)
         layout.addWidget(content, 1)

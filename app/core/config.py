@@ -50,5 +50,5 @@ def load_settings():
             "FITTRACK_DESKTOP_API_TOKEN",
             "dev-fittrack-desktop-token-change-before-public",
         ),
-        pos_mode=os.getenv("FITTRACK_POS_MODE", "fake").strip().lower(),
+        pos_mode=os.getenv("FITTRACK_POS_MODE", "real").strip().lower(),
     )

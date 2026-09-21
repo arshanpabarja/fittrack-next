@@ -22,6 +22,8 @@ from PyQt6.QtWidgets import (
 )
 
 from app.ui.workers import TaskWorker
+from app.domain.membership import session_allowance
+from app.domain.dates import normalize_membership_datetime
 
 
 class MemberDialog(QDialog):
@@ -77,10 +79,16 @@ class MemberDialog(QDialog):
         self.national_id = self._line(member.national_id)
         self.certificate_no = self._line(member.certificate_no)
         self.plan = self._line(member.plan)
-        self.signup_time = QLineEdit(member.signup_time or "نامشخص")
-        self.signup_time.setObjectName("readOnlyField")
-        self.signup_time.setReadOnly(True)
+        self.original_signup_time = normalize_membership_datetime(member.signup_time)
+        self.signup_time = QLineEdit(self.original_signup_time)
+        self.signup_time.setPlaceholderText("1405/06/30")
+        self.signup_time.setToolTip("تاریخ شمسی؛ ساعت اختیاری است، مانند 1405/06/30 09:30")
         self.signup_time.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        self.remaining_sessions = QSpinBox()
+        self.remaining_sessions.setSuffix(" جلسه")
+        self.remaining_sessions.setToolTip("عدد منفی یعنی جلسات استفاده‌شده در مهلت تمدید.")
+        self.plan.textChanged.connect(self._update_remaining_sessions)
+        self._update_remaining_sessions(self.plan.text())
         self.age = QSpinBox()
         self.age.setRange(0, 120)
         self.age.setSpecialValueText("نامشخص")
@@ -108,6 +116,7 @@ class MemberDialog(QDialog):
         form.addRow("جنسیت", self.gender)
         form.addRow("پلن", self.plan)
         form.addRow("تاریخ ثبت‌نام", self.signup_time)
+        form.addRow("جلسات باقی‌مانده", self.remaining_sessions)
         form.addRow("بدهی", self.debt)
         form.addRow("پرداخت", self.payment)
         form.addRow("آدرس", self.address)
@@ -179,7 +188,7 @@ class MemberDialog(QDialog):
         self.error.hide()
         self.save_button.setEnabled(False)
         self.save_button.setText("در حال ذخیره…")
-        self.save_requested.emit({
+        values = {
             "first_name": self.first_name.text(),
             "last_name": self.last_name.text(),
             "father_name": self.father_name.text(),
@@ -192,7 +201,25 @@ class MemberDialog(QDialog):
             "debt": self.debt.value(),
             "payment": self.payment.value(),
             "address": self.address.toPlainText().strip(),
-        })
+        }
+        if self.signup_time.text().strip() != self.original_signup_time:
+            values["signup_time"] = self.signup_time.text()
+        if self.remaining_sessions.isEnabled() and (
+            self.remaining_sessions.value() != self.member.remaining_sessions
+            or self.plan.text() != self.member.plan
+        ):
+            values["remaining_sessions"] = self.remaining_sessions.value()
+        self.save_requested.emit(values)
+
+    def _update_remaining_sessions(self, plan):
+        allowance = session_allowance(plan)
+        self.remaining_sessions.setEnabled(allowance is not None)
+        self.remaining_sessions.setRange(-1_000_000, allowance or 0)
+        self.remaining_sessions.setValue(allowance - self.member.used_sessions if allowance else 0)
+        if allowance is None:
+            self.remaining_sessions.setToolTip("ابتدا تعداد جلسات را در نام پلن مشخص کنید؛ مثلاً بدنسازی ۱۲ جلسه.")
+        else:
+            self.remaining_sessions.setToolTip("عدد منفی یعنی جلسات استفاده‌شده در مهلت تمدید.")
 
     def save_failed(self, message):
         self.error.setText(message)
@@ -323,7 +350,7 @@ class RenewalDialog(QDialog):
         layout.addWidget(self.error)
 
         buttons = QHBoxLayout()
-        self.submit = QPushButton("پرداخت آزمایشی و تمدید")
+        self.submit = QPushButton("پرداخت و تمدید")
         self.submit.setEnabled(bool(self.available_plans))
         self.submit.clicked.connect(self._submit)
         cancel = QPushButton("انصراف")
@@ -355,7 +382,7 @@ class RenewalDialog(QDialog):
         self.error.setText(message)
         self.error.show()
         self.submit.setEnabled(True)
-        self.submit.setText("پرداخت آزمایشی و تمدید")
+        self.submit.setText("پرداخت و تمدید")
 
 
 class MembersPage(QWidget):
@@ -572,6 +599,7 @@ class MembersPage(QWidget):
         dialog.accept()
         QMessageBox.information(self, "ذخیره شد", "اطلاعات عضو با موفقیت به‌روزرسانی شد.")
         self.busy = False
+        self.face_index_refresh_requested.emit()
         self.load()
 
     def _reset_site_password(self, dialog, member_id, password, confirmation):

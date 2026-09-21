@@ -5,7 +5,7 @@ from pathlib import Path
 # Keep application assets and face models beside this launcher, while sharing
 # the live database folder one level above the application directory.
 application_root = Path(__file__).resolve().parent
-shared_data_dir = application_root.parent / "database"
+shared_data_dir = Path(os.getenv("FITTRACK_DATA_DIR", application_root.parent / "database")).resolve()
 if not shared_data_dir.is_dir():
     raise RuntimeError(f"Life Box database folder was not found: {shared_data_dir}")
 

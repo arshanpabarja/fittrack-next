@@ -56,6 +56,11 @@ class MembershipRepository:
             ).fetchone()
         return row["grace_started_at"] if row else None
 
+    def clear_grace(self, member_id):
+        with self.database.connect() as connection:
+            connection.execute("DELETE FROM membership_grace WHERE member_id = ?", (int(member_id),))
+            connection.commit()
+
     def complete_renewal(
         self,
         *,
