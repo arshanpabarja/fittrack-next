@@ -1,18 +1,12 @@
-import json
 import re
 from pathlib import Path
 
 from app.domain.errors import ValidationError
-from app.domain.models import SignupPlan, WalkInSignupResult
+from app.domain.models import WalkInSignupResult
+from app.services.plans import PlansService
 
 
 DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
-
-
-def _number(value):
-    normalized = str(value or "0").translate(DIGITS)
-    digits = re.sub(r"[^0-9]", "", normalized)
-    return int(digits or 0)
 
 
 class WalkInSignupService:
@@ -22,24 +16,8 @@ class WalkInSignupService:
         self.pos = pos_terminal
 
     def list_plans(self):
-        try:
-            payload = json.loads(self.plans_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError, TypeError) as exc:
-            raise ValidationError("فهرست پلن‌های ثبت‌نام حضوری قابل خواندن نیست.") from exc
-        plans = []
-        index = 1
-        for gender, items in payload.items():
-            if not isinstance(items, list):
-                continue
-            for item in items:
-                if not bool(item.get("is_active", True)):
-                    continue
-                name = str(item.get("name", "")).strip()
-                if not name:
-                    continue
-                plans.append(SignupPlan(index, name, _number(item.get("price")), gender))
-                index += 1
-        return tuple(plans)
+        # Share canonical gender codes and metadata with the management catalog.
+        return tuple(plan for plan in PlansService(None, self.plans_path).load() if plan.is_active)
 
     def validate_profile(self, values):
         cleaned = dict(values)

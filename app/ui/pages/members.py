@@ -310,7 +310,7 @@ class RenewalDialog(QDialog):
 
         form = QFormLayout()
         form.setSpacing(14)
-        member_gender = {"مرد": "male", "زن": "female"}.get(member.gender, "all")
+        member_gender = {"مرد": "male", "زن": "female"}.get(member.gender, member.gender)
         self.available_plans = [
             plan
             for plan in plans
