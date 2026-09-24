@@ -193,12 +193,12 @@ QLabel#actionIcon { background: #f0f0eb; color: #343430; border-radius: 12px; fo
 QFrame#primaryAction QLabel#actionIcon { background: #171714; color: #f2cf00; }
 QLabel#actionTitle { color: #171714; font-size: 18px; font-weight: 900; }
 QLabel#actionDescription { color: #74746d; font-size: 12px; }
-QLabel#attendanceTitle { color: #171714; font-size: 38px; font-weight: 900; }
-QLabel#attendanceSubtitle { color: #686861; font-size: 18px; }
-QLabel#attendanceEntryTitle { color: #171714; font-size: 46px; font-weight: 900; }
-QLabel#attendanceEntryDescription { color: #423900; font-size: 23px; }
-QLabel#attendanceInfoTitle { color: #171714; font-size: 28px; font-weight: 900; }
-QLabel#attendanceInfoDescription { color: #686861; font-size: 18px; }
+QLabel#attendanceTitle { color: #171714; font-size: 34px; font-weight: 900; }
+QLabel#attendanceSubtitle { color: #686861; font-size: 16px; }
+QLabel#attendanceEntryTitle { color: #171714; font-size: 40px; font-weight: 900; }
+QLabel#attendanceEntryDescription { color: #423900; font-size: 20px; }
+QLabel#attendanceInfoTitle { color: #171714; font-size: 26px; font-weight: 900; }
+QLabel#attendanceInfoDescription { color: #686861; font-size: 16px; }
 QLabel#actionLink { color: #5d5000; font-size: 14px; font-weight: 900; }
 QFrame#primaryAction QLabel#actionDescription { color: #554900; }
 QPushButton#actionButton { min-height: 18px; padding: 7px 13px; background: #242420; color: #ffffff; border: none; }

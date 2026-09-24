@@ -228,7 +228,8 @@ class AttendancePage(QWidget):
 
     def _action_card(self, title, description, primary, callback):
         card = TouchCard("primaryAction" if primary else "actionCard")
-        card.setFixedHeight(260 if primary else 190)
+        card.setFixedHeight(300)
+        card.setStyleSheet("QFrame#primaryAction, QFrame#actionCard { min-height: 300px; max-height: 300px; }")
         card.clicked.connect(callback)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 22)
