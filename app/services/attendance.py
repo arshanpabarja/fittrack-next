@@ -26,6 +26,10 @@ class AttendanceService:
     def refresh_faces(self):
         return self.face_index.refresh()
 
+    def lookup_member(self, embedding):
+        matched = self.face_index.match(embedding)
+        return self.members_repository.get(matched.id)
+
     def check_in(self, embedding):
         member = self.face_index.match(embedding)
         current = self.members_repository.get(member.id)

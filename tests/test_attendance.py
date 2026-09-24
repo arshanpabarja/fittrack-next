@@ -76,6 +76,14 @@ class AttendanceTests(unittest.TestCase):
         self.assertEqual(self.attendance.summary(), {"inside": 0, "free_lockers": 2})
         self.assertEqual(self.access.events[-1], ("exit", None))
 
+    def test_face_lookup_returns_current_details_without_checking_in(self):
+        before = self.members.get(1)
+        result = self.service.lookup_member([0.99, 0.01])
+        self.assertEqual(result, before)
+        self.assertEqual(self.members.get(1).used_sessions, before.used_sessions)
+        self.assertEqual(self.attendance.summary(), {"inside": 0, "free_lockers": 2})
+        self.assertEqual(self.access.events, [])
+
     def test_admin_activity_overview_supports_today_and_month(self):
         member = self.service.face_index.match([1, 0])
         self.attendance.check_in(member, "2026-08-12 10:00:00")

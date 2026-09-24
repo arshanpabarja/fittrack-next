@@ -148,6 +148,9 @@ class WalkInSignupPage(QWidget):
         self.face_status = QLabel("دوربین پس از ورود به این مرحله خودکار باز می‌شود.")
         self.face_status.setObjectName("workflowStatus")
         self.face_status.setWordWrap(True)
+        self.rescan_button = QPushButton("اسکن مجدد چهره")
+        self.rescan_button.setObjectName("secondaryButton")
+        self.rescan_button.clicked.connect(self._capture_face)
         self.register_button = QPushButton("پرداخت و ساخت عضو")
         self.register_button.setEnabled(False)
         self.register_button.clicked.connect(self._register)
@@ -156,6 +159,7 @@ class WalkInSignupPage(QWidget):
         back.clicked.connect(lambda: self._show_step(1))
         layout.addWidget(self.review_summary)
         layout.addWidget(self.face_status)
+        layout.addWidget(self.rescan_button)
         layout.addStretch()
         layout.addWidget(self.register_button)
         layout.addWidget(back)
@@ -221,16 +225,23 @@ class WalkInSignupPage(QWidget):
         QTimer.singleShot(250, self._capture_face)
 
     def _capture_face(self):
+        if self.busy or self.stack.currentIndex() != 2:
+            return
+        self.rescan_button.setEnabled(False)
+        self.register_button.setEnabled(False)
         dialog = FaceCaptureDialog(
             self.models_dir,
             self.camera_indices,
             self,
             auto_capture=True,
+            capture_delay=4,
         )
         dialog.captured.connect(self._face_captured)
         dialog.exec()
+        self.rescan_button.setEnabled(True)
+        self.register_button.setEnabled(self.embedding is not None)
         if self.embedding is None:
-            self.face_status.setText("چهره ثبت نشد؛ برای تلاش دوباره یک مرحله برگردید و ادامه را بزنید.")
+            self.face_status.setText("چهره ثبت نشد؛ دکمهٔ «اسکن مجدد چهره» را بزنید.")
 
     def _face_captured(self, embedding, image):
         self.embedding = embedding
@@ -244,6 +255,7 @@ class WalkInSignupPage(QWidget):
         self.busy = True
         self.register_button.setEnabled(False)
         self.register_button.setText("در حال پرداخت و ساخت عضو…")
+        self.rescan_button.setEnabled(False)
         worker = TaskWorker(
             self.service.register,
             self.profile,
@@ -271,6 +283,7 @@ class WalkInSignupPage(QWidget):
 
     def _finished(self):
         self.busy = False
+        self.rescan_button.setEnabled(True)
         self.register_button.setText("پرداخت و ساخت عضو")
         self.register_button.setEnabled(self.embedding is not None)
 

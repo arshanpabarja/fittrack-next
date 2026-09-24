@@ -14,7 +14,7 @@ from app.integrations.camera import CameraWorker
 class FaceCaptureDialog(QDialog):
     captured = pyqtSignal(object, bytes)
 
-    def __init__(self, models_dir, camera_indices=(0, 1, 2), parent=None, auto_capture=False):
+    def __init__(self, models_dir, camera_indices=(0, 1, 2), parent=None, auto_capture=False, capture_delay=0):
         super().__init__(parent)
         self.setWindowTitle("ثبت چهره عضو")
         self.resize(760, 620)
@@ -24,6 +24,7 @@ class FaceCaptureDialog(QDialog):
             models_dir,
             camera_indices=camera_indices,
             auto_capture=auto_capture,
+            capture_delay=capture_delay,
             parent=self,
         )
         self.worker.frame_ready.connect(self._show_frame)
@@ -37,7 +38,7 @@ class FaceCaptureDialog(QDialog):
         title = QLabel("شناسایی خودکار چهره" if auto_capture else "ثبت چهره")
         title.setObjectName("dialogTitle")
         subtitle = QLabel(
-            "روبروی دوربین بایستید؛ ورود به‌صورت خودکار ثبت می‌شود."
+            "روبروی دوربین بایستید؛ چهره به‌صورت خودکار اسکن می‌شود."
             if auto_capture
             else "نور صورت کافی باشد و فقط یک نفر مقابل دوربین قرار بگیرد."
         )
