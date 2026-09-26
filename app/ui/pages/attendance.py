@@ -20,6 +20,7 @@ from app.ui.pages.members import RenewalDialog
 from app.ui.widgets import TouchCard
 from app.ui.workers import TaskWorker
 from app.domain.dates import normalize_membership_datetime
+from app.domain.errors import MembershipExpired
 
 
 class MemberInfoDialog(QDialog):
@@ -51,7 +52,7 @@ class MemberInfoDialog(QDialog):
             ("پلن", member.plan), ("تاریخ ثبت‌نام", normalize_membership_datetime(member.signup_time)),
             ("کل جلسات پلن", member.session_allowance),
             ("جلسات استفاده‌شده", member.used_sessions),
-            ("جلسات باقی‌مانده", remaining),
+            ("جلسات باقی‌مانده", "مهلت استفاده تمام شده" if member.expired and (remaining is None or remaining >= 0) else remaining),
             ("پرداخت ثبت‌شده", f"{member.payment:,} تومان"),
             ("بدهی", f"{member.debt:,} تومان"),
         )
@@ -306,7 +307,7 @@ class AttendancePage(QWidget):
         self.busy = True
         worker = TaskWorker(operation, *args)
         worker.signals.succeeded.connect(success)
-        worker.signals.failed.connect(self._failed)
+        worker.signals.failed_exception.connect(self._operation_failed)
         worker.signals.finished.connect(self._finished)
         self.pool.start(worker)
 
@@ -375,6 +376,19 @@ class AttendancePage(QWidget):
 
     def _failed(self, message):
         QMessageBox.warning(self, "عملیات انجام نشد", message)
+
+    def _operation_failed(self, error):
+        if not isinstance(error, MembershipExpired):
+            self._failed(str(error))
+            return
+        message = QMessageBox(self)
+        message.setWindowTitle("پایان اعتبار عضویت")
+        message.setText(str(error))
+        renew = message.addButton("تمدید عضویت", QMessageBox.ButtonRole.AcceptRole)
+        message.addButton("بازگشت", QMessageBox.ButtonRole.RejectRole)
+        message.exec()
+        if message.clickedButton() == renew:
+            self._load_renewal(error.member_id)
 
     def _finished(self):
         self.busy = False

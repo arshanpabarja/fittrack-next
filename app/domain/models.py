@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from app.domain.membership import remaining_sessions, session_allowance
+from app.domain.dates import membership_expired
 
 
 @dataclass(frozen=True)
@@ -29,9 +30,16 @@ class MemberSummary:
         return remaining_sessions(self.plan, self.used_sessions)
 
     @property
+    def expired(self):
+        try:
+            return membership_expired(self.signup_time)
+        except ValueError:
+            return False
+
+    @property
     def renewal_required(self):
         remaining = self.remaining_sessions
-        return remaining is not None and remaining <= 0
+        return self.expired or (remaining is not None and remaining <= 0)
 
 
 @dataclass(frozen=True)
@@ -120,9 +128,16 @@ class RecognizedMember:
         return remaining_sessions(self.plan, self.used_sessions)
 
     @property
+    def expired(self):
+        try:
+            return membership_expired(self.signup_time)
+        except ValueError:
+            return False
+
+    @property
     def renewal_required(self):
         remaining = self.remaining_sessions
-        return remaining is not None and remaining <= 0
+        return self.expired or (remaining is not None and remaining <= 0)
 
 
 @dataclass(frozen=True)

@@ -41,8 +41,8 @@ class AttendanceTests(unittest.TestCase):
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
-                    ("آرش", "احمدی", "09120000001", "مرد", "بدنسازی", "[1, 0]", "2026-01-01", 0),
-                    ("سام", "کریمی", "09120000002", "مرد", "کلیس", "[0, 1]", "2026-01-01", 4),
+                    ("آرش", "احمدی", "09120000001", "مرد", "بدنسازی", "[1, 0]", datetime.now().strftime("%Y-%m-%d"), 0),
+                    ("سام", "کریمی", "09120000002", "مرد", "کلیس", "[0, 1]", datetime.now().strftime("%Y-%m-%d"), 4),
                 ],
             )
             connection.commit()
@@ -65,7 +65,7 @@ class AttendanceTests(unittest.TestCase):
     def test_check_in_and_out_are_atomic_and_update_usage(self):
         check_in = self.service.check_in([0.99, 0.01])
         self.assertEqual(check_in.member.mobile, "09120000001")
-        self.assertEqual(check_in.member.signup_time, "2026-01-01")
+        self.assertEqual(check_in.member.signup_time, datetime.now().strftime("%Y-%m-%d"))
         self.assertEqual(check_in.locker_id, 1)
         self.assertEqual(self.attendance.summary(), {"inside": 1, "free_lockers": 1})
         self.assertEqual(self.members.get(1).used_sessions, 1)

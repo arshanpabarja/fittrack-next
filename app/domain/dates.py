@@ -105,3 +105,21 @@ def validate_membership_datetime(value):
         if gregorian_to_jalali(candidate.year, candidate.month, candidate.day) != (year, month, day):
             raise ValueError("Invalid Jalali date")
     return normalize_membership_datetime(text)
+
+
+def membership_expires_at(value):
+    """One Jalali calendar month, clamped to the next month's last day."""
+    match = DATE_TIME_RE.fullmatch(validate_membership_datetime(value))
+    year, month, day = map(int, match.group(1, 2, 3))
+    year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    clock = ':'.join(f'{int(part or 0):02d}' for part in match.group(4, 5, 6))
+    while day > 0:
+        try:
+            return validate_membership_datetime(f'{year:04d}-{month:02d}-{day:02d} {clock}')
+        except ValueError:
+            day -= 1
+    raise ValueError('Invalid membership date')
+
+
+def membership_expired(value, now=None):
+    return jalali_now(now) >= membership_expires_at(value)

@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
+from app.domain.dates import jalali_now
 
 from app.data.manager import ManagerRepository
 from app.data.members import MembersRepository
@@ -193,8 +194,8 @@ class RepositoryTests(unittest.TestCase):
         repository = MembersRepository(self.members_path)
         with closing(sqlite3.connect(self.members_path)) as connection:
             connection.execute(
-                "UPDATE users SET plan = ?, used_sessions = 15 WHERE id = 1",
-                ("بدنسازی ۱۲ جلسه در ماه",),
+                "UPDATE users SET plan = ?, signup_time = ?, used_sessions = 15 WHERE id = 1",
+                ("بدنسازی ۱۲ جلسه در ماه", jalali_now()),
             )
             connection.commit()
         memberships = MembershipRepository(Path(self.temp.name) / "state.db")

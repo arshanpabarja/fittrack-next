@@ -64,6 +64,10 @@ class MemberDialog(QDialog):
                 session_text += " — عضو در مهلت تمدید است."
             elif remaining == 0:
                 session_text += " — جلسات پلن تمام شده است."
+        if member.expired:
+            session_text = "مهلت استفاده از عضویت تمام شده است؛ لطفاً تمدید کنید."
+            if remaining is not None and remaining < 0:
+                session_text += f" جلسات منفی: {remaining}"
         self.session_status = QLabel(session_text)
         self.session_status.setObjectName("membershipStatus")
         self.session_status.setWordWrap(True)
@@ -304,6 +308,11 @@ class RenewalDialog(QDialog):
             if carried
             else "عضو جلسه منفی ندارد؛ تاریخ شروع پلن جدید زمان همین تمدید خواهد بود."
         )
+        if getattr(member, "expired", False):
+            explanation.setText(
+                "اعتبار عضویت تمام شده است؛ دورهٔ جدید از زمان تمدید شروع می‌شود."
+                + (f" {min(carried, 5)} جلسهٔ منفی از پلن جدید کسر می‌شود." if carried else "")
+            )
         explanation.setObjectName("membershipStatus")
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
@@ -524,7 +533,7 @@ class MembersPage(QWidget):
                 member.mobile,
                 member.national_id or "—",
                 member.plan,
-                str(member.remaining_sessions) if member.remaining_sessions is not None else "نامشخص",
+                ("پایان اعتبار" if member.expired and (member.remaining_sessions is None or member.remaining_sessions >= 0) else str(member.remaining_sessions) if member.remaining_sessions is not None else "نامشخص"),
                 str(member.id),
             )
             for column, value in enumerate(values):

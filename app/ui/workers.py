@@ -7,6 +7,7 @@ from PyQt6.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
 class WorkerSignals(QObject):
     succeeded = pyqtSignal(object)
     failed = pyqtSignal(str)
+    failed_exception = pyqtSignal(object)
     finished = pyqtSignal()
 
 
@@ -27,6 +28,7 @@ class TaskWorker(QRunnable):
                 "Background task failed: %s\n%s", exc, traceback.format_exc()
             )
             self.signals.failed.emit(str(exc) or "عملیات با خطا مواجه شد.")
+            self.signals.failed_exception.emit(exc)
         else:
             self.signals.succeeded.emit(result)
         finally:

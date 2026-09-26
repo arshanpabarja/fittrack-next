@@ -84,7 +84,7 @@ class MemberService:
         grace_started_at = self.membership_repository.grace_started_at(member.id)
         membership_started_at = (
             normalize_membership_datetime(grace_started_at)
-            if carried and grace_started_at
+            if carried and grace_started_at and not member.expired
             else now
         )
         renewed = self.repository.renew_membership(

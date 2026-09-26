@@ -2,8 +2,8 @@ import json
 from dataclasses import replace
 from datetime import datetime
 
-from app.domain.dates import normalize_membership_datetime
-from app.domain.errors import FitTrackError
+from app.domain.dates import normalize_membership_datetime, membership_expired
+from app.domain.errors import FitTrackError, MembershipExpired
 from app.domain.membership import remaining_sessions
 from app.domain.models import AttendanceResult
 
@@ -33,6 +33,12 @@ class AttendanceService:
     def check_in(self, embedding):
         member = self.face_index.match(embedding)
         current = self.members_repository.get(member.id)
+        try:
+            expired = membership_expired(current.signup_time)
+        except ValueError as exc:
+            raise FitTrackError("تاریخ ثبت‌نام معتبر نیست؛ برای اصلاح تاریخ به مدیر مراجعه کنید.") from exc
+        if expired:
+            raise MembershipExpired(current.id)
         member = replace(
             member,
             full_name=current.full_name,
