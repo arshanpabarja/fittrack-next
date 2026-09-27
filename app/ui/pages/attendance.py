@@ -21,6 +21,7 @@ from app.ui.widgets import TouchCard
 from app.ui.workers import TaskWorker
 from app.domain.dates import normalize_membership_datetime
 from app.domain.errors import MembershipExpired
+from app.integrations.audio import play_welcome
 
 
 class MemberInfoDialog(QDialog):
@@ -312,6 +313,7 @@ class AttendancePage(QWidget):
         self.pool.start(worker)
 
     def _show_result(self, result):
+        play_welcome()
         self.refresh_summary()
         dialog = CheckInSuccessDialog(result, self)
         dialog.exec()
