@@ -65,8 +65,10 @@ py -3.12 -m venv .venv
 فایل `run-lifebox.cmd` را اجرا کنید.
 
 
-## اتصال به سایت روی VPS
 
-راهنمای فعال‌سازی انتقال اولیه و همگام‌سازی خودکار اطلاعات، بدون ارسال چهره،
-در [CLOUD_DEPLOYMENT.md](CLOUD_DEPLOYMENT.md) آمده است. این قابلیت پیش‌فرض خاموش
-است و فقط روی دستگاه اصلی باشگاه فعال می‌شود.
+
+
+FITTRACK_REMOTE_SYNC=1
+FITTRACK_SYNC_SOURCE=05b7abcf-15f6-45f8-b8a8-8db187aa7ba5
+FITTRACK_DESKTOP_API_TOKEN=SLILOiMt2ZAG0ZlbMiaqT_k3rXWX-ezBg9f4_SiTuxRfFkzOifEEia5SPOoGH7I_
+FITTRACK_DB_PATH=/var/www/database/gym_users.db
