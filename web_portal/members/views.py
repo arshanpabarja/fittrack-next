@@ -24,7 +24,19 @@ from .models import CoachProfile, LegacyMember, MembershipApplication, Plan, Sig
 
 
 PUBLIC_ROOT = settings.BASE_DIR.parent / "lifebox-landing"
-PUBLIC_PAGES = {"index.html", "coaches.html", "login.html", "signup.html", "pending.html", "dashboard.html", "admin.html", "coach-panel.html"}
+PUBLIC_PAGES = {
+    "index.html",
+    "coaches.html",
+    "bodybuilding.html",
+    "calisthenics.html",
+    "functional.html",
+    "login.html",
+    "signup.html",
+    "pending.html",
+    "dashboard.html",
+    "admin.html",
+    "coach-panel.html",
+}
 DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 MOBILE_RE = re.compile(r"^09\d{9}$")
 NATIONAL_ID_RE = re.compile(r"^\d{10}$")

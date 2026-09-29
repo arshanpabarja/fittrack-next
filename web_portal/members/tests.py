@@ -15,6 +15,32 @@ from .hashers import LifeBoxLegacyPasswordHasher
 from .views import signup_otp_digest
 
 
+class PublicSitePageTests(TestCase):
+    def test_service_pages_are_public_and_contain_the_expected_content(self):
+        pages = {
+            "/bodybuilding.html": ("بدنسازی", "امین تهرانی"),
+            "/calisthenics.html": ("کلیستنیکس", "فرید صالحی"),
+            "/functional.html": ("فانکشنال", "استقامت"),
+        }
+
+        for path, expected_texts in pages.items():
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                content = response.content.decode("utf-8")
+                for expected in expected_texts:
+                    self.assertIn(expected, content)
+                self.assertIn("02144656198", content)
+
+    def test_homepage_exposes_account_aware_membership_links(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("بدنسازی نیمه‌خصوصی و خصوصی", content)
+        self.assertIn("کلیستنیکس", content)
+        self.assertIn("data-account-cta", content)
+
+
 class LegacyPasswordTests(TestCase):
     def test_pre_django_password_hash_is_accepted(self):
         salt = base64.urlsafe_b64encode(b"0123456789abcdef").decode()

@@ -314,11 +314,16 @@ function initNumericInputs() {
 
 async function initAuthLink() {
   const link = $('.quiet-link[href="login.html"]');
-  if (!link) return;
+  const accountLinks = $$('[data-account-cta]');
+  if (!link && !accountLinks.length) return;
   try {
     const result = await api("/api/me");
-    link.href = accountDestination(result.user);
-    link.textContent = "پنل من";
+    const destination = accountDestination(result.user);
+    if (link) link.hidden = true;
+    accountLinks.forEach((accountLink) => {
+      accountLink.href = destination;
+      accountLink.textContent = "پنل";
+    });
   } catch {
     // Anonymous visitors keep the normal login link.
   }
