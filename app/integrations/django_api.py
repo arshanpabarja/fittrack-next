@@ -1,4 +1,6 @@
 import json
+import ssl
+import certifi
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -16,6 +18,10 @@ class DjangoApiClient:
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.timeout = timeout
+        # Keep system trust (including managed Windows roots) and add Mozilla's
+        # current CA bundle for computers whose Windows root store is outdated.
+        self.ssl_context = ssl.create_default_context()
+        self.ssl_context.load_verify_locations(cafile=certifi.where())
 
     def _request(self, method, path, payload=None):
         body = None
@@ -33,7 +39,7 @@ class DjangoApiClient:
             method=method,
         )
         try:
-            with urlopen(request, timeout=self.timeout) as response:
+            with urlopen(request, timeout=self.timeout, context=self.ssl_context) as response:
                 data = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
             try:
@@ -43,6 +49,11 @@ class DjangoApiClient:
                 message = str(exc)
             raise DjangoApiError(message) from exc
         except (URLError, TimeoutError, OSError) as exc:
+            reason = exc.reason if isinstance(exc, URLError) else exc
+            if isinstance(reason, ssl.SSLCertVerificationError):
+                raise DjangoApiError(
+                    "گواهی امن سایت تأیید نشد؛ تاریخ و ساعت ویندوز و به‌روز بودن بسته certifi را بررسی کنید."
+                ) from exc
             raise DjangoApiError(
                 "ارتباط با سایت برقرار نشد؛ وضعیت Django و شبکه را بررسی کنید."
             ) from exc
