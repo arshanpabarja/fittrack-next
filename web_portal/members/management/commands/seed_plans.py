@@ -2,7 +2,7 @@ import json
 import re
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from members.models import Plan
 
@@ -19,6 +19,8 @@ class Command(BaseCommand):
     help = "Import membership plans from Life Box plans.json without deleting existing plans."
 
     def handle(self, *args, **options):
+        if settings.FITTRACK_REMOTE_SYNC:
+            raise CommandError('Remote plans are imported automatically by gym synchronization.')
         source = settings.BASE_DIR.parent / "database" / "plans.json"
         data = json.loads(source.read_text(encoding="utf-8"))
         created = updated = 0
@@ -34,6 +36,7 @@ class Command(BaseCommand):
                 sessions = int(session_matches[-1]) if session_matches else 0
                 _, was_created = Plan.objects.update_or_create(
                     name=name,
+                    gender=gender_map.get(gender_name, Plan.Gender.ALL),
                     defaults={
                         "gender": gender_map.get(gender_name, Plan.Gender.ALL),
                         "price": number(item.get("price")),

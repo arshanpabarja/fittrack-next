@@ -56,7 +56,8 @@ class Plan(models.Model):
         MALE = "male", "مرد"
         FEMALE = "female", "زن"
 
-    name = models.CharField(max_length=160, unique=True)
+    # Desktop plan IDs identify plans; display names may repeat across catalogs.
+    name = models.CharField(max_length=160)
     gender = models.CharField(max_length=8, choices=Gender.choices, default=Gender.ALL)
     price = models.PositiveBigIntegerField(default=0)
     sessions_per_month = models.PositiveSmallIntegerField(default=0)

@@ -22,7 +22,7 @@ class Command(BaseCommand):
         password = os.environ.get('FITTRACK_OWNER_PASSWORD') or getpass.getpass('Owner password: ')
         if len(password) < 8:
             raise CommandError('Password must contain at least 8 characters')
-        catalog = json.loads(settings.FITTRACK_PLANS_PATH.read_text(encoding='utf-8-sig'))
+        catalog = {} if settings.FITTRACK_REMOTE_SYNC else json.loads(settings.FITTRACK_PLANS_PATH.read_text(encoding='utf-8-sig'))
         with transaction.atomic():
             user, _ = User.objects.get_or_create(mobile=mobile)
             user.role = User.Role.ADMIN
@@ -36,7 +36,7 @@ class Command(BaseCommand):
                     name = item['name']
                     matches = re.findall(r'(\d+)جلسه', normalize_digits(name))
                     price = int(re.sub(r'\D', '', normalize_digits(item.get('price', 0))) or 0)
-                    Plan.objects.update_or_create(name=name, defaults=dict(
+                    Plan.objects.update_or_create(name=name, gender=gender, defaults=dict(
                         gender=gender, price=price, sessions_per_month=item.get('sessions_per_month') or (int(matches[-1]) if matches else 12),
                         is_active=item.get('is_active', True)))
         self.stdout.write(self.style.SUCCESS('Owner account and desktop plans are ready.'))

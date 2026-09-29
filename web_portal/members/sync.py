@@ -1,6 +1,7 @@
 """Authenticated, ordered single-gym replication. No biometric payload is accepted."""
 import hashlib
 import json
+import logging
 import secrets
 
 from django.conf import settings
@@ -113,5 +114,11 @@ def sync_api(request):
             cursor.refresh_from_db()
             cursor.save(update_fields=['updated_at'])
     except (IntegrityError, ValueError) as exc:
+        if isinstance(exc, IntegrityError):
+            logging.getLogger(__name__).warning(
+                'Gym sync rejected: sequence=%s kind=%s id=%s constraint=%s',
+                sequence, record['kind'] if records else '-',
+                record['id'] if records else '-', str(exc),
+            )
         return error(str(exc) if isinstance(exc, ValueError) else 'اطلاعات با رکورد موجود سرور تداخل دارد.', status=409)
     return JsonResponse(dict(ok=True, sequence=sequence))

@@ -47,6 +47,24 @@ class CloudSyncTests(TestCase):
         self.assertFalse(LegacyMember.objects.filter(pk=51).exists())
         self.assertFalse(GymSyncCursor.objects.exists())
 
+    def test_distinct_plan_ids_can_share_names_and_retry_independently(self):
+        male = self.record('plan', 12)
+        female = self.record('plan', 13)
+        female['data']['gender'] = 'female'
+        female['data']['price'] = 200
+        another = self.record('plan', 14)
+        for _ in range(2):
+            self.assertEqual(self.post([male, female, another]).status_code, 200)
+        self.assertEqual(Plan.objects.filter(name='Gym 12').count(), 3)
+        user = User.objects.create_user(mobile='09124445566')
+        application = MembershipApplication.objects.create(user=user, plan_id=13)
+        male['data']['price'] = 150
+        self.assertEqual(self.post([male], sequence=2).status_code, 200)
+        application.refresh_from_db()
+        self.assertEqual(application.plan_id, 13)
+        self.assertEqual(application.plan.price, 200)
+        self.assertEqual(Plan.objects.get(pk=12).price, 150)
+
     def test_delete_known_member_and_deactivate_plan(self):
         self.assertEqual(self.post([self.record(), self.record('plan', 12)]).status_code, 200)
         deleted = [dict(kind='member', id=51, data=None), dict(kind='plan', id=12, data=None)]
