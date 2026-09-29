@@ -117,6 +117,16 @@ class EnrollmentTests(unittest.TestCase):
             count = connection.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         self.assertEqual(count, 1)
 
+    def test_cloud_outage_keeps_local_member_and_payment_for_retry(self):
+        cloud = Mock()
+        cloud.run.side_effect = TimeoutError('offline')
+        service = EnrollmentService(StubApi(), self.workflows, self.members, StubPos(), cloud_sync=cloud)
+        self._prepare(service)
+        member_id = service.complete(self.application, {'gender': 'زن'})
+        self.assertEqual(self.workflows.get(17).status, 'member_created')
+        self.assertEqual(self.members.get(member_id).payment, self.application.price)
+        self.assertEqual(service.complete(self.application, {'gender': 'زن'}), member_id)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -195,10 +195,14 @@ class EnrollmentDialog(QDialog):
         self._set_busy(False)
 
     def _completed(self, member_id):
+        state = self.service.workflows.get(self.application.id)
+        message = f"عضو با شناسه {member_id} ساخته شد و حساب سایت فعال شد."
+        if state and state.status != 'activated':
+            message = f"عضو با شناسه {member_id} در باشگاه ثبت شد. فعال‌سازی سایت در صف است و با برقراری ارتباط خودکار انجام می‌شود؛ پرداخت مجدد لازم نیست."
         QMessageBox.information(
             self,
-            "عضویت فعال شد",
-            f"عضو با شناسه {member_id} ساخته شد و حساب سایت فعال شد.",
+            "ثبت عضویت",
+            message,
         )
         self.completed.emit()
         self.accept()

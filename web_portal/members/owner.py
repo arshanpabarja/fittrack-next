@@ -50,8 +50,8 @@ def member_rows():
             linked.add(gym['id'])
         rows.append(dict(
             key=f'web:{user.id}', webId=user.id, gymId=gym['id'] if gym else None,
-            firstName=user.first_name, lastName=user.last_name, mobile=user.mobile,
-            nationalId=user.national_id or '', address=user.address, role=user.role,
+            firstName=gym['first_name'] if gym else user.first_name, lastName=gym['last_name'] if gym else user.last_name, mobile=gym['mobile'] if gym else user.mobile,
+            nationalId=(gym['national_id'] if gym else user.national_id) or '', address=(gym['address'] if gym else user.address) or '', role=user.role,
             status=user.status, plan=gym['plan'] if gym else application.plan.name if application else '',
             joinedAt=gym['signup_time'] if gym else user.date_joined.isoformat(),
             lastLogin=user.last_login.isoformat() if user.last_login else None,
@@ -77,7 +77,7 @@ def members(request):
     if search:
         rows = [r for r in rows if search in (r['firstName']+' '+r['lastName']).casefold()
                 or normalize_digits(search) in normalize_digits(r['mobile']) or normalize_digits(search) in r['nationalId']]
-    return JsonResponse({'ok': True, 'members': rows})
+    return JsonResponse({'ok': True, 'members': rows, 'remoteSync': settings.FITTRACK_REMOTE_SYNC})
 
 
 @owner_only
@@ -100,6 +100,8 @@ def member(request, source, member_id):
         user = User.objects.filter(Q(membership_application__legacy_member_id=gym.id) | Q(mobile=gym.mobile)).first()
     if user and user.role == User.Role.ADMIN:
         return error('حساب مدیر از این فرم قابل تغییر نیست.', 403)
+    if gym and settings.FITTRACK_REMOTE_SYNC:
+        return error('اطلاعات این عضو در برنامه باشگاه ویرایش و خودکار به سایت منتقل می‌شود.', 409)
     values = {}
     for api_key, key, limit in [('firstName', 'first_name', 150), ('lastName', 'last_name', 150), ('mobile', 'mobile', 11), ('nationalId', 'national_id', 10), ('address', 'address', 2000)]:
         if api_key not in payload:
@@ -185,9 +187,21 @@ def activity(request):
             attendance = [dict(r) for r in conn.execute('SELECT member_id,full_name,mobile,plan,checked_in_at,checked_out_at,locker_id FROM attendance_sessions WHERE checked_in_at>=? AND checked_in_at<? ORDER BY checked_in_at DESC LIMIT 500', bounds)]
     except (sqlite3.Error, OSError):
         available = False
+    synced_at = None
+    if settings.FITTRACK_REMOTE_SYNC:
+        from .models import GymSyncRecord, GymSyncCursor
+        rows = GymSyncRecord.objects.filter(kind='attendance')
+        visits = rows.filter(data__checked_in_at__gte=start.isoformat(), data__checked_in_at__lt=end.isoformat())
+        count = visits.count()
+        unique = visits.values('data__member_id').distinct().count()
+        inside = rows.filter(data__checked_out_at=None).count()
+        attendance = list(visits.order_by('-data__checked_in_at').values_list('data', flat=True)[:500])
+        cursor = GymSyncCursor.objects.first()
+        available = bool(cursor and cursor.sequence)
+        synced_at = cursor.updated_at.isoformat() if available else None
     return JsonResponse(dict(ok=True, period=period, start=start.isoformat(), end=today.isoformat(), logins=logins,
                              loginCount=events.count(), loginUsers=events.values('user_id').distinct().count(), attendance=attendance,
-                             attendanceAvailable=available, visitCount=count, visitors=unique, inside=inside,
+                             attendanceAvailable=available, syncedAt=synced_at, visitCount=count, visitors=unique, inside=inside,
                              audit=[dict(action=a.action, at=a.occurred_at.isoformat()) for a in OwnerAudit.objects.order_by('-occurred_at')[:30]]))
 
 
@@ -215,6 +229,8 @@ def write_plan_catalog(plan, old_name=None):
 def plans(request, plan_id=None):
     if request.method == 'GET':
         return JsonResponse({'ok': True, 'plans': [_desktop_plan_payload(p) for p in Plan.objects.all()]})
+    if settings.FITTRACK_REMOTE_SYNC:
+        return error('پلن‌ها در برنامه باشگاه ویرایش و خودکار به سایت منتقل می‌شوند.', 409)
     if (request.method == 'PATCH') != (plan_id is not None):
         return error('درخواست معتبر نیست.')
     current = Plan.objects.filter(pk=plan_id).first() if plan_id else None

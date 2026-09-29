@@ -200,3 +200,20 @@ class LegacyMember(models.Model):
         db_table = "users"
 
 # Create your models here.
+
+
+class GymSyncCursor(models.Model):
+    source = models.CharField(max_length=80, primary_key=True)
+    sequence = models.PositiveBigIntegerField(default=0)
+    digest = models.CharField(max_length=64, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class GymSyncRecord(models.Model):
+    kind = models.CharField(max_length=16)
+    local_id = models.PositiveBigIntegerField()
+    data = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['kind', 'local_id'], name='unique_gym_sync_record')]

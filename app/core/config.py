@@ -36,6 +36,8 @@ class Settings:
 
 def load_settings():
     package_root = Path(__file__).resolve().parents[2]
+    from app.core.cloud_config import load_cloud_config
+    load_cloud_config(package_root)
     root = Path(os.getenv("FITTRACK_ROOT", package_root)).resolve()
     data_dir = Path(os.getenv("FITTRACK_DATA_DIR", root / "database")).resolve()
     return Settings(

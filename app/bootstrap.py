@@ -28,6 +28,7 @@ from app.services.preferences import PreferencesService
 from app.services.coaches import CoachesService
 from app.services.walk_in import WalkInSignupService
 from app.services.plans import PlansService
+from app.services.cloud_sync import CloudSyncService
 from app.ui.main_window import MainWindow, Services
 
 
@@ -60,6 +61,10 @@ def build_services(settings):
     membership_repository = MembershipRepository(settings.state_database)
     pos_terminal = create_pos_terminal(runtime)
     plans_service = PlansService(api, settings.data_dir / "plans.json")
+    cloud_sync = None
+    if os.getenv('FITTRACK_CLOUD_SYNC') == '1':
+        cloud_sync = CloudSyncService(api, settings.members_database, settings.state_database,
+                                      plans_service, os.getenv('FITTRACK_SYNC_SOURCE', ''), workflows)
     return Services(
         dashboard=DashboardService(
             settings.members_database,
@@ -80,6 +85,7 @@ def build_services(settings):
             workflows,
             members_repository,
             pos_terminal,
+            cloud_sync=cloud_sync,
         ),
         attendance=AttendanceService(
             FaceIndex(members_repository, threshold=float(runtime["face_threshold"])),
@@ -98,6 +104,7 @@ def build_services(settings):
         ),
         plans=plans_service,
         camera_indices=camera_indices,
+        cloud_sync=cloud_sync,
     )
 
 

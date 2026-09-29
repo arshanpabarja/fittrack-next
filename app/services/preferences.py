@@ -22,6 +22,8 @@ class PreferencesService:
 
     def load(self):
         values = {**DEFAULTS, **self.repository.all()}
+        if os.getenv('FITTRACK_API_URL'):
+            values['api_url'] = os.environ['FITTRACK_API_URL'].rstrip('/')
         if "FITTRACK_POS_MODE" in os.environ:
             values["pos_mode"] = os.environ["FITTRACK_POS_MODE"].strip().lower()
         return values

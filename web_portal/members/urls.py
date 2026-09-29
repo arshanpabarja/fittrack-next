@@ -1,9 +1,10 @@
 from django.urls import path, re_path
 
-from . import views, owner
+from . import views, owner, sync
 
 
 urlpatterns = [
+    path('api/desktop/sync', sync.sync_api),
     path('api/owner/members', owner.members),
     path('api/owner/members/<str:source>/<int:member_id>', owner.member),
     path('api/owner/activity', owner.activity),

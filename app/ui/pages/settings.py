@@ -1,3 +1,4 @@
+import os
 from PyQt6.QtCore import QThreadPool
 from PyQt6.QtWidgets import (
     QFormLayout,
@@ -34,6 +35,9 @@ class SettingsPage(QWidget):
         form = QFormLayout()
         form.setSpacing(14)
         self.api_url = QLineEdit()
+        if os.getenv('FITTRACK_API_URL'):
+            self.api_url.setReadOnly(True)
+            self.api_url.setToolTip('آدرس اتصال از تنظیمات راه‌اندازی سایت خوانده می‌شود.')
         self.camera_indices = QLineEdit()
         self.face_threshold = QLineEdit()
         self.pos_mode = QComboBox()

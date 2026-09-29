@@ -70,6 +70,13 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(root)
 
         self._register_pages()
+        self.cloud_busy = False
+        if self.services.cloud_sync:
+            self.cloud_timer = QTimer(self)
+            self.cloud_timer.timeout.connect(self._run_cloud_sync)
+            self.cloud_timer.start(30_000)
+            QTimer.singleShot(4_000, self._run_cloud_sync)
+            self.statusBar().showMessage('اتصال سایت: در انتظار همگام‌سازی')
         self.auto_checkout_timer = QTimer(self)
         self.auto_checkout_timer.timeout.connect(self._run_auto_checkout)
         self.auto_checkout_timer.start(60_000)
@@ -181,6 +188,19 @@ class MainWindow(QMainWindow):
         worker.signals.succeeded.connect(self._after_auto_checkout)
         self.pool.start(worker)
 
+    def _run_cloud_sync(self):
+        if self.cloud_busy:
+            return
+        self.cloud_busy = True
+        worker = TaskWorker(self.services.cloud_sync.run)
+        worker.signals.succeeded.connect(lambda _: self.statusBar().showMessage('اتصال سایت: آخرین بررسی موفق بود'))
+        worker.signals.failed.connect(lambda _: self.statusBar().showMessage('اتصال سایت: ارسال انجام نشد؛ تلاش مجدد خودکار انجام می‌شود'))
+        worker.signals.finished.connect(self._cloud_finished)
+        self.pool.start(worker)
+
+    def _cloud_finished(self):
+        self.cloud_busy = False
+
     def _after_auto_checkout(self, count):
         if count:
             self.pages["dashboard"].loaded = False
@@ -219,7 +239,8 @@ class MainWindow(QMainWindow):
 
 
 class Services:
-    def __init__(self, *, dashboard, members, auth, pending, enrollment, attendance, reports, preferences, coaches, walk_in, plans, camera_indices):
+    def __init__(self, *, dashboard, members, auth, pending, enrollment, attendance, reports, preferences, coaches, walk_in, plans, camera_indices, cloud_sync=None):
+        self.cloud_sync = cloud_sync
         self.dashboard = dashboard
         self.members = members
         self.auth = auth

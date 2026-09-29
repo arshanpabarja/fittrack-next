@@ -159,3 +159,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 FITTRACK_PLANS_PATH = Path(os.getenv("FITTRACK_PLANS_PATH", str(FITTRACK_DB_PATH.parent / "plans.json")))
 FITTRACK_ATTENDANCE_PATH = Path(os.getenv("FITTRACK_ATTENDANCE_PATH", str(BASE_DIR.parent / "state" / "fittrack_next.db")))
+FITTRACK_REMOTE_SYNC = os.getenv('FITTRACK_REMOTE_SYNC', '0') == '1'
+FITTRACK_SYNC_SOURCE = os.getenv('FITTRACK_SYNC_SOURCE', '').strip()

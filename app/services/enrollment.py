@@ -11,11 +11,12 @@ class PendingApplicationsService:
 
 
 class EnrollmentService:
-    def __init__(self, api, workflows, members, pos):
+    def __init__(self, api, workflows, members, pos, cloud_sync=None):
         self.api = api
         self.workflows = workflows
         self.members = members
         self.pos = pos
+        self.cloud_sync = cloud_sync
 
     def start(self, application):
         return self.workflows.start(application)
@@ -41,6 +42,8 @@ class EnrollmentService:
         state = self.workflows.get(application.id)
         if not state:
             state = self.workflows.start(application)
+        if state.status == 'activated' and state.legacy_member_id:
+            return state.legacy_member_id
         biometric = self.workflows.biometric_payload(application.id)
         if not biometric:
             raise ValidationError("ابتدا چهره عضو را ثبت کنید.")
@@ -58,9 +61,17 @@ class EnrollmentService:
             )
             state = self.workflows.mark_member_created(application.id, member_id)
         try:
+            if self.cloud_sync:
+                # The periodic worker retries activation if internet is unavailable.
+                self.cloud_sync.run()
+                return member_id
             self.api.activate(application.id, member_id, state.paid_amount)
         except Exception as exc:
             self.workflows.mark_error(application.id, exc)
+            if self.cloud_sync:
+                import logging
+                logging.getLogger(__name__).warning('Local enrollment saved; cloud activation pending')
+                return member_id
             raise
         self.workflows.mark_activated(application.id)
         return member_id

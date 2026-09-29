@@ -164,7 +164,11 @@ def reconcile_pending_user(user):
     if not application or application.status != MembershipApplication.Status.PENDING:
         return
     legacy = find_legacy_member(user.mobile)
-    if legacy and legacy.embedding and legacy.face_image:
+    face_registered = bool(legacy and legacy.embedding and legacy.face_image)
+    if legacy and settings.FITTRACK_REMOTE_SYNC:
+        from .models import GymSyncRecord
+        face_registered = GymSyncRecord.objects.filter(kind='member', local_id=legacy.id, data__face_registered=True).exists()
+    if legacy and face_registered:
         with transaction.atomic():
             application.activate(legacy_member_id=legacy.id, paid_amount=legacy.payment or 0)
 
@@ -628,7 +632,11 @@ def member_program_api(request):
 
 def _desktop_authorized(request):
     provided = request.headers.get("Authorization", "")
-    return provided == f"Bearer {settings.FITTRACK_DESKTOP_API_TOKEN}"
+    import secrets
+    token = settings.FITTRACK_DESKTOP_API_TOKEN
+    if settings.FITTRACK_REMOTE_SYNC and (len(token) < 32 or token.startswith('dev-')):
+        return False
+    return bool(token) and secrets.compare_digest(provided, f"Bearer {token}")
 
 
 def _desktop_plan_payload(plan):
@@ -670,6 +678,8 @@ def _desktop_plan_values(payload, current=None):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def desktop_plans_api(request):
+    if settings.FITTRACK_REMOTE_SYNC and request.method != 'GET':
+        return error('پلن‌ها در برنامه باشگاه ویرایش و خودکار به سایت منتقل می‌شوند.', status=409)
     if not _desktop_authorized(request):
         return error("توکن Life Box معتبر نیست.", status=401)
     if request.method == "GET":
@@ -688,6 +698,8 @@ def desktop_plans_api(request):
 @csrf_exempt
 @require_http_methods(["PATCH"])
 def desktop_plan_api(request, plan_id):
+    if settings.FITTRACK_REMOTE_SYNC and request.method != 'GET':
+        return error('پلن‌ها در برنامه باشگاه ویرایش و خودکار به سایت منتقل می‌شوند.', status=409)
     if not _desktop_authorized(request):
         return error("توکن Life Box معتبر نیست.", status=401)
     plan = Plan.objects.filter(pk=plan_id).first()
@@ -852,6 +864,10 @@ def desktop_activate_api(request, application_id):
     application = MembershipApplication.objects.select_related("user").filter(pk=application_id).first()
     if not application:
         return error("درخواست عضویت پیدا نشد.", status=404)
+    if (application.status == MembershipApplication.Status.ACTIVE
+            and application.legacy_member_id == legacy_member_id
+            and application.paid_amount == paid_amount):
+        return JsonResponse({"ok": True, "user": public_user(application.user)})
     if application.status != MembershipApplication.Status.PENDING:
         return error("این درخواست قبلاً تعیین تکلیف شده است.", status=409)
     legacy = LegacyMember.objects.filter(pk=legacy_member_id).first()

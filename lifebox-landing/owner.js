@@ -1,6 +1,6 @@
 /* Owner operations use Django sessions and the existing CSRF helper. */
 (() => {
-  let members = [], plans = [], editingMember, editingPlan, refreshing = false, memberPage = 1;
+  let remoteSync = false, members = [], plans = [], editingMember, editingPlan, refreshing = false, memberPage = 1;
   const html = escapeHtml;
   const number = value => new Intl.NumberFormat('fa-IR').format(value || 0);
   const stamp = value => value ? `${formatDate(value)} · ${toFa((value.split('T')[1] || value.split(' ')[1] || '').slice(0,5))}` : '—';
@@ -20,24 +20,24 @@
     $('#next-members').disabled = memberPage === pageCount;
     $('#member-count').textContent = `${number(allRows.length)} حساب از ${number(members.length)} حساب و عضو حضوری`;
     $('#metric-members').textContent = number(members.filter(m => m.role === 'member').length);
-    $('#owner-members').innerHTML = rows.map(m => `<tr><td><strong>${html(`${m.firstName} ${m.lastName}`)}</strong><small>${html(toFa(m.mobile))}</small></td><td>${html(m.plan || '—')}</td><td>${number(m.sessionsUsed)}</td><td>${number(m.debt)}</td><td>${html(m.status === 'gym' ? 'فقط حضوری' : statusLabel(m.status))}<small>${html(roleLabel(m.role))}</small></td><td><div class="owner-actions">${m.role === 'admin' ? '—' : `<button class="table-action" data-edit-member="${m.key}">ویرایش</button>${m.webId ? `<button class="table-action" data-status-member="${m.webId}" data-status="${m.status === 'suspended' ? 'active' : 'suspended'}">${m.status === 'suspended' ? 'فعال‌سازی سایت' : 'تعلیق سایت'}</button>` : ''}`}</div></td></tr>`).join('') || empty(6,'عضوی پیدا نشد.');
+    $('#owner-members').innerHTML = rows.map(m => `<tr><td><strong>${html(`${m.firstName} ${m.lastName}`)}</strong><small>${html(toFa(m.mobile))}</small></td><td>${html(m.plan || '—')}</td><td>${number(m.sessionsUsed)}</td><td>${number(m.debt)}</td><td>${html(m.status === 'gym' ? 'فقط حضوری' : statusLabel(m.status))}<small>${html(roleLabel(m.role))}</small></td><td><div class="owner-actions">${m.role === 'admin' ? '—' : `${remoteSync && m.gymId ? '<small>ویرایش در برنامه باشگاه</small>' : `<button class="table-action" data-edit-member="${m.key}">ویرایش</button>`}${m.webId ? `<button class="table-action" data-status-member="${m.webId}" data-status="${m.status === 'suspended' ? 'active' : 'suspended'}">${m.status === 'suspended' ? 'فعال‌سازی سایت' : 'تعلیق سایت'}</button>` : ''}`}</div></td></tr>`).join('') || empty(6,'عضوی پیدا نشد.');
   }
   function renderPlans() {
-    $('#owner-plans').innerHTML = plans.map(p => `<article class="owner-plan ${p.isActive ? '' : 'inactive'}"><span>${p.isActive ? 'فعال' : 'غیرفعال'} · ${{all:'همه',male:'آقایان',female:'بانوان'}[p.gender]}</span><h3>${html(p.name)}</h3><strong>${number(p.price)} <small>تومان</small></strong><p>${number(p.sessionsPerMonth)} جلسه در ماه</p><button class="table-action" data-edit-plan="${p.id}">ویرایش پلن</button></article>`).join('') || '<p>هنوز پلنی ثبت نشده است.</p>';
+    $('#owner-plans').innerHTML = plans.map(p => `<article class="owner-plan ${p.isActive ? '' : 'inactive'}"><span>${p.isActive ? 'فعال' : 'غیرفعال'} · ${{all:'همه',male:'آقایان',female:'بانوان'}[p.gender]}</span><h3>${html(p.name)}</h3><strong>${number(p.price)} <small>تومان</small></strong><p>${number(p.sessionsPerMonth)} جلسه در ماه</p>${remoteSync ? '<small>ویرایش در برنامه باشگاه</small>' : `<button class="table-action" data-edit-plan="${p.id}">ویرایش پلن</button>`}</article>`).join('') || '<p>هنوز پلنی ثبت نشده است.</p>';
   }
   async function refresh() {
     if (refreshing) return;
     refreshing = true; $('#refresh-owner').disabled = true;
     try {
       const [directory, catalog, activity] = await Promise.all([api('/api/owner/members'), api('/api/owner/plans'), api(`/api/owner/activity?period=${$('#activity-period').value}`)]);
-      members = directory.members; plans = catalog.plans; renderMembers(); renderPlans();
+      remoteSync = Boolean(directory.remoteSync); $('#new-plan').disabled = remoteSync; $('#new-plan').title = remoteSync ? 'پلن‌ها از برنامه باشگاه مدیریت می‌شوند' : ''; members = directory.members; plans = catalog.plans; renderMembers(); renderPlans();
       $('#metric-inside').textContent = activity.attendanceAvailable ? number(activity.inside) : '—';
       $('#metric-visits').textContent = activity.attendanceAvailable ? number(activity.visitCount) : '—';
       $('#metric-visitors').textContent = activity.attendanceAvailable ? `${number(activity.visitors)} عضو یکتا` : 'اتصال حضور در دسترس نیست';
       $('#metric-logins').textContent = number(activity.loginCount);
       $('#metric-login-users').textContent = `${number(activity.loginUsers)} کاربر یکتا`;
       $('#activity-range').textContent = `${formatDate(activity.start)} تا ${formatDate(activity.end)} · ساعت محلی باشگاه (تهران)`;
-      $('#attendance-warning').textContent = activity.attendanceAvailable ? '' : 'دیتابیس حضور برنامه باشگاه در دسترس نیست؛ آمار حضور قابل نمایش نیست.';
+      $('#attendance-warning').textContent = activity.syncedAt ? `آخرین دریافت اطلاعات باشگاه: ${new Date(activity.syncedAt).toLocaleString('fa-IR', {timeZone:'Asia/Tehran'})}؛ هنگام قطع ارتباط، آمار مربوط به آخرین دریافت است.` : (activity.attendanceAvailable ? '' : 'اطلاعات حضور باشگاه هنوز دریافت نشده است.');
       $('#owner-attendance').innerHTML = activity.attendance.map(a => `<tr><td>${html(a.full_name)}<small>${html(toFa(a.mobile))}</small></td><td>${stamp(a.checked_in_at)}</td><td>${a.checked_out_at ? stamp(a.checked_out_at) : 'داخل باشگاه'}</td><td>${number(a.locker_id)}</td></tr>`).join('') || empty(4,activity.attendanceAvailable ? 'در این بازه مراجعه‌ای ثبت نشده است.' : 'اطلاعات حضور در دسترس نیست.');
       $('#owner-logins').innerHTML = activity.logins.map(l => `<tr><td>${html(l.name)}</td><td>${html(toFa(l.mobile))}</td><td>${stamp(new Date(l.at).toLocaleString('sv-SE',{timeZone:'Asia/Tehran'}))}</td></tr>`).join('') || empty(3,'در این بازه ورود به سایت ثبت نشده است.');
       $('#owner-audit').innerHTML = activity.audit.map(a => `<li><span>${html(a.action)}</span><small>${stamp(new Date(a.at).toLocaleString('sv-SE',{timeZone:'Asia/Tehran'}))}</small></li>`).join('') || '<li>هنوز تغییری ثبت نشده است.</li>';

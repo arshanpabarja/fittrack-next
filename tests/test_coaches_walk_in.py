@@ -123,32 +123,16 @@ class CoachesAndWalkInTests(unittest.TestCase):
         self.assertEqual(api.call, (1, "NewPass482!"))
         self.assertEqual(result["mobile"], "09120000001")
 
-    def test_plan_management_syncs_active_plans_to_walk_in_file(self):
-        class PlanApi:
-            def __init__(self):
-                self.plans = [
-                    SignupPlan(1, "بدنسازی ۱۲ جلسه", 2_400_000, "male", 12, True),
-                    SignupPlan(2, "پلن قدیمی", 1_000_000, "all", 8, False),
-                ]
-
-            def list_admin_plans(self):
-                return tuple(self.plans)
-
-            def save_plan(self, values, plan_id=None):
-                saved = SignupPlan(
-                    plan_id or 3,
-                    values["name"],
-                    values["price"],
-                    values["gender"],
-                    values["sessions_per_month"],
-                    values["is_active"],
-                )
-                self.plans.append(saved)
-                return saved
-
+    def test_plan_management_preserves_local_catalog_without_network(self):
+        from unittest.mock import Mock
         plans_path = self.root / "plans.json"
-        plans_path.write_text('{"single_session_price": 500000}', encoding="utf-8")
-        service = PlansService(PlanApi(), plans_path)
+        plans_path.write_text(json.dumps({
+            "single_session_price": 500000,
+            "مرد": [{"id": 1, "name": "بدنسازی ۱۲ جلسه", "price": 2400000}],
+            "همه": [{"id": 2, "name": "پلن قدیمی", "price": 1000000, "is_active": False}],
+        }, ensure_ascii=False), encoding="utf-8")
+        api = Mock()
+        service = PlansService(api, plans_path)
         service.save({
             "name": "پلن بانوان ۱۰ جلسه",
             "price": 2_000_000,
@@ -158,8 +142,10 @@ class CoachesAndWalkInTests(unittest.TestCase):
         })
         payload = json.loads(plans_path.read_text(encoding="utf-8"))
         self.assertEqual(payload["مرد"][0]["name"], "بدنسازی ۱۲ جلسه")
+        self.assertEqual(payload["زن"][0]["sessions_per_month"], 10)
         self.assertEqual(payload["single_session_price"], 500000)
-        self.assertFalse(any(item["name"] == "پلن قدیمی" for item in payload["همه"]))
+        self.assertFalse(payload["همه"][0]["is_active"])
+        self.assertEqual(api.mock_calls, [])
 
 
 if __name__ == "__main__":
