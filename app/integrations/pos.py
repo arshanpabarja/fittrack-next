@@ -96,8 +96,16 @@ class RealPosTerminal:
                         self._pending_terminal = None
                         return PaymentReceipt(False, amount, "", f"پرداخت ناموفق؛ کد کارتخوان: {code}")
                 time.sleep(0.25)
-            self._uncertain = True
-            return self._unknown(amount)
+            # The terminal's payment window has ended without a response. This
+            # attempt is finished, so a new click must create a fresh terminal
+            # transaction instead of keeping every later payment blocked.
+            self._pending_terminal = None
+            return PaymentReceipt(
+                False,
+                amount,
+                "",
+                "مهلت پرداخت روی کارتخوان تمام شد؛ برای پرداخت دوباره تلاش کنید.",
+            )
         except Exception:
             # A send/read failure can happen after the bank has charged the card.
             self._uncertain = sent

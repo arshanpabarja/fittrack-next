@@ -45,13 +45,23 @@ class PosTests(unittest.TestCase):
         with patch("app.integrations.pos.time.sleep"):
             self.assertTrue(pos.charge(100).success)
 
-    def test_timeout_blocks_resubmission(self):
+    def test_timeout_allows_a_fresh_transaction(self):
         pos, terminal, _, factory = self.terminal()
         terminal.Response = None
         with patch("app.integrations.pos.time.monotonic", side_effect=[0, 0, 61]), patch("app.integrations.pos.time.sleep"):
-            self.assertFalse(pos.charge(100).success)
-        self.assertFalse(pos.charge(100).success)
-        factory.assert_called_once_with()
+            receipt = pos.charge(100)
+        self.assertFalse(receipt.success)
+        self.assertIn("مهلت پرداخت", receipt.message)
+
+        terminal.Response = Mock()
+        terminal.Response.GetTrxnResp.return_value = "RS = 00"
+        terminal.Response.GetTrxnRRN.return_value = "RN = 812770823735"
+        retry = pos.charge(100)
+
+        self.assertTrue(retry.success)
+        self.assertEqual(retry.reference, "812770823735")
+        self.assertEqual(factory.call_count, 2)
+        self.assertEqual(terminal.send_transaction.call_count, 2)
 
     def test_send_exception_blocks_resubmission(self):
         pos, terminal, _, factory = self.terminal()
