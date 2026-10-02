@@ -67,8 +67,3 @@ py -3.12 -m venv .venv
 
 
 
-
-FITTRACK_REMOTE_SYNC=1
-FITTRACK_SYNC_SOURCE=05b7abcf-15f6-45f8-b8a8-8db187aa7ba5
-FITTRACK_DESKTOP_API_TOKEN=SLILOiMt2ZAG0ZlbMiaqT_k3rXWX-ezBg9f4_SiTuxRfFkzOifEEia5SPOoGH7I_
-FITTRACK_DB_PATH=/var/www/database/gym_users.db
