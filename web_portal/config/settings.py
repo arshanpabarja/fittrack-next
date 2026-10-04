@@ -127,7 +127,7 @@ STATICFILES_DIRS = [BASE_DIR.parent / 'lifebox-landing']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 AUTH_USER_MODEL = 'members.User'
-LOGIN_URL = '/login.html'
+LOGIN_URL = '/login'
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Strict'
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30

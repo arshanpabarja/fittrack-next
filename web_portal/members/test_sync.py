@@ -2,13 +2,16 @@ import json
 
 from django.test import TestCase, override_settings
 
-from .models import GymSyncCursor, GymSyncRecord, LegacyMember, MembershipApplication, Plan, User
+from .models import GymRemoteCommand, GymSyncCursor, GymSyncRecord, LegacyMember, MembershipApplication, Plan, User
 
 
 @override_settings(FITTRACK_REMOTE_SYNC=True, FITTRACK_SYNC_SOURCE='test-gym', FITTRACK_DESKTOP_API_TOKEN='s' * 40)
 class CloudSyncTests(TestCase):
-    def post(self, records, sequence=1, source='test-gym', token='s' * 40):
-        return self.client.post('/api/desktop/sync', data=json.dumps(dict(source=source, sequence=sequence, records=records)),
+    def post(self, records, sequence=1, source='test-gym', token='s' * 40, command_results=None):
+        body = dict(source=source, sequence=sequence, records=records)
+        if command_results is not None:
+            body['commandResults'] = command_results
+        return self.client.post('/api/desktop/sync', data=json.dumps(body),
                                 content_type='application/json', HTTP_AUTHORIZATION='Bearer ' + token)
 
     def record(self, kind='member', key=51):
@@ -84,7 +87,7 @@ class CloudSyncTests(TestCase):
         application.refresh_from_db()
         self.assertEqual(application.status, 'active')
 
-    def test_owner_shows_mirrored_attendance_and_blocks_edits(self):
+    def test_owner_shows_mirrored_attendance_and_queues_edits(self):
         admin = User.objects.create_superuser(mobile='09129999999', password='not-used')
         self.client.force_login(admin)
         from django.utils import timezone
@@ -96,4 +99,29 @@ class CloudSyncTests(TestCase):
         self.assertTrue(response['attendanceAvailable'])
         self.assertEqual(response['visitCount'], 1)
         self.assertEqual(response['inside'], 1)
-        self.assertEqual(self.client.patch('/api/owner/members/gym/51', data='{}', content_type='application/json').status_code, 409)
+        edit = self.client.patch('/api/owner/members/gym/51',
+            data=json.dumps({'firstName': 'Edited'}), content_type='application/json')
+        self.assertEqual(edit.status_code, 200)
+        self.assertTrue(edit.json()['queued'])
+        command_response = self.post([], sequence=2).json()
+        self.assertEqual(command_response['commands'][0]['data'], {'first_name': 'Edited'})
+        command_id = command_response['commands'][0]['id']
+        changed = self.record()
+        changed['data']['first_name'] = 'Edited'
+        ack = self.post([changed], sequence=3,
+                        command_results=[{'id': command_id, 'success': True, 'error': ''}]).json()
+        self.assertEqual(ack['resultAcks'], [command_id])
+        self.assertEqual(GymRemoteCommand.objects.get(pk=command_id).status, 'applied')
+
+    def test_online_plan_create_is_delivered_to_desktop(self):
+        admin = User.objects.create_superuser(mobile='09129999998', password='not-used')
+        self.client.force_login(admin)
+        response = self.client.post('/api/owner/plans', data=json.dumps({
+            'name': 'آنلاین ۸ جلسه در ماه', 'price': 500,
+            'sessionsPerMonth': 8, 'gender': 'all', 'isActive': True,
+        }), content_type='application/json')
+        self.assertEqual(response.status_code, 200, response.content)
+        command = GymRemoteCommand.objects.get(kind='plan')
+        delivered = self.post([], sequence=1).json()['commands'][0]
+        self.assertEqual(delivered['localId'], command.local_id)
+        self.assertTrue(delivered['create'])

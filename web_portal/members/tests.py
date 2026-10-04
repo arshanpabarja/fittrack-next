@@ -18,9 +18,9 @@ from .views import signup_otp_digest
 class PublicSitePageTests(TestCase):
     def test_service_pages_are_public_and_contain_the_expected_content(self):
         pages = {
-            "/bodybuilding.html": ("بدنسازی", "امین تهرانی"),
-            "/calisthenics.html": ("کلیستنیکس", "فرید صالحی"),
-            "/functional.html": ("فانکشنال", "استقامت"),
+            "/bodybuilding": ("بدنسازی", "امین تهرانی"),
+            "/calisthenics": ("کلیستنیکس", "فرید صالحی"),
+            "/functional": ("فانکشنال", "استقامت"),
         }
 
         for path, expected_texts in pages.items():
@@ -31,6 +31,11 @@ class PublicSitePageTests(TestCase):
                 for expected in expected_texts:
                     self.assertIn(expected, content)
                 self.assertIn("02144656198", content)
+
+    def test_legacy_html_urls_redirect_to_clean_paths(self):
+        response = self.client.get('/coaches.html?from=old')
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response['Location'], '/coaches?from=old')
 
     def test_homepage_exposes_account_aware_membership_links(self):
         response = self.client.get("/")

@@ -40,14 +40,24 @@ ROTATE_ADMIN_PASSWORD = os.getenv("LIFEBOX_ROTATE_ADMIN_PASSWORD", "0") == "1"
 MOBILE_RE = re.compile(r"^09\d{9}$")
 DIGIT_TRANSLATION = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 PUBLIC_PAGES = {
-    "/index.html",
-    "/coaches.html",
-    "/login.html",
-    "/signup.html",
-    "/dashboard.html",
-    "/admin.html",
     "/styles.css",
     "/app.js",
+}
+CLEAN_PAGE_ROUTES = {
+    "/": "index.html",
+    "/coaches": "coaches.html",
+    "/bodybuilding": "bodybuilding.html",
+    "/calisthenics": "calisthenics.html",
+    "/functional": "functional.html",
+    "/login": "login.html",
+    "/signup": "signup.html",
+    "/pending": "pending.html",
+    "/dashboard": "dashboard.html",
+    "/admin": "admin.html",
+    "/coach-panel": "coach-panel.html",
+}
+LEGACY_PAGE_ROUTES = {
+    f"/{filename}": route for route, filename in CLEAN_PAGE_ROUTES.items()
 }
 PUBLIC_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".ico", ".ttf", ".woff2", ".mp4", ".webm"}
 RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
@@ -284,7 +294,7 @@ class LifeBoxHandler(BaseHTTPRequestHandler):
         )
         if USE_HTTPS:
             self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-        if self.path.startswith("/api/") or self.path.endswith(".html") or self.path == "/":
+        if self.path.startswith("/api/") or urlparse(self.path).path in CLEAN_PAGE_ROUTES:
             self.send_header("Cache-Control", "no-store")
         elif self.path.startswith("/assets/"):
             self.send_header("Cache-Control", "public, max-age=86400")
@@ -384,11 +394,12 @@ class LifeBoxHandler(BaseHTTPRequestHandler):
 
     def static_file(self) -> Path | None:
         raw_path = unquote(urlparse(self.path).path)
-        request_path = "/index.html" if raw_path == "/" else raw_path
-        if request_path in PUBLIC_PAGES:
-            relative = request_path.lstrip("/")
-        elif request_path.startswith("/assets/") and Path(request_path).suffix.lower() in PUBLIC_ASSET_EXTENSIONS:
-            relative = request_path.lstrip("/")
+        if raw_path in CLEAN_PAGE_ROUTES:
+            relative = CLEAN_PAGE_ROUTES[raw_path]
+        elif raw_path in PUBLIC_PAGES:
+            relative = raw_path.lstrip("/")
+        elif raw_path.startswith("/assets/") and Path(raw_path).suffix.lower() in PUBLIC_ASSET_EXTENSIONS:
+            relative = raw_path.lstrip("/")
         else:
             return None
         candidate = (ROOT / relative).resolve()
@@ -452,6 +463,14 @@ class LifeBoxHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path in LEGACY_PAGE_ROUTES:
+            location = LEGACY_PAGE_ROUTES[parsed.path]
+            if parsed.query:
+                location += "?" + parsed.query
+            self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+            self.send_header("Location", location)
+            self.end_headers()
+            return
         if parsed.path == "/api/health":
             self.send_json({"ok": True, "service": "LifeBox"})
             return

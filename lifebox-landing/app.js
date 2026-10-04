@@ -137,9 +137,9 @@ function initMobileNavigation() {
 }
 
 function accountDestination(user) {
-  if (user.role === "admin") return "admin.html";
-  if (user.role === "coach") return "coach-panel.html";
-  return user.status === "pending" ? "pending.html" : "dashboard.html";
+  if (user.role === "admin") return "/admin";
+  if (user.role === "coach") return "/coach-panel";
+  return user.status === "pending" ? "/pending" : "/dashboard";
 }
 
 async function initLogin() {
@@ -293,7 +293,7 @@ function initSignup() {
     setBusy(button, true, "در حال ساخت حساب...");
     try {
       const result = await api("/api/signup", { method: "POST", body: JSON.stringify(data) });
-      window.location.href = result.user.status === "active" ? "dashboard.html" : "pending.html";
+      window.location.href = result.user.status === "active" ? "/dashboard" : "/pending";
     } catch (error) {
       if (error.field) setFieldError(form, error.field, error.message);
       else setFormMessage(form, error.message);
@@ -313,7 +313,7 @@ function initNumericInputs() {
 }
 
 async function initAuthLink() {
-  const link = $('.quiet-link[href="login.html"]');
+  const link = $('.quiet-link[href="/login"]');
   const accountLinks = $$('[data-account-cta]');
   if (!link && !accountLinks.length) return;
   try {
@@ -333,7 +333,7 @@ async function logout() {
   try {
     await api("/api/logout", { method: "POST", body: "{}" });
   } finally {
-    window.location.href = "login.html";
+    window.location.href = "/login";
   }
 }
 
@@ -349,12 +349,12 @@ async function protectPage(role) {
       return null;
     }
     if (!role && result.user.status === "pending" && !document.querySelector("[data-pending]")) {
-      window.location.replace("pending.html");
+      window.location.replace("/pending");
       return null;
     }
     return result.user;
   } catch {
-    window.location.replace("login.html");
+    window.location.replace("/login");
     return null;
   }
 }
@@ -366,12 +366,12 @@ async function initPending() {
     try {
       const result = await api("/api/me");
       if (result.user.role !== "member") return window.location.replace(accountDestination(result.user));
-      if (result.user.status === "active") return window.location.replace("dashboard.html");
+      if (result.user.status === "active") return window.location.replace("/dashboard");
       $("[data-pending-name]").textContent = result.user.fullName;
       $("[data-pending-mobile]").textContent = toFa(result.user.mobile);
       $("[data-pending-plan]").textContent = result.user.plan;
     } catch {
-      window.location.replace("login.html");
+      window.location.replace("/login");
     }
   };
   $("[data-refresh-status]")?.addEventListener("click", refresh);

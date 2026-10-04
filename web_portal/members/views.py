@@ -188,7 +188,7 @@ def reconcile_pending_user(user):
 @ensure_csrf_cookie
 def page(request, name):
     if name == 'admin.html' and not _is_admin(request.user):
-        return redirect('/login.html')
+        return redirect('/login')
     if name not in PUBLIC_PAGES or not (PUBLIC_ROOT / name).is_file():
         raise Http404
     response = render(request, name)

@@ -38,6 +38,9 @@ class CloudSyncService:
                 CREATE TABLE IF NOT EXISTS sent (kind TEXT, id INTEGER, payload TEXT NOT NULL,
                     PRIMARY KEY(kind,id));
                 CREATE TABLE IF NOT EXISTS pending (id INTEGER PRIMARY KEY CHECK(id=1), body TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS command_results (
+                    id INTEGER PRIMARY KEY, success INTEGER NOT NULL, error TEXT NOT NULL
+                );
             ''')
             identity = encoded([source, api.base_url, str(self.members_path.resolve()), str(self.state_path.resolve())])
             old = conn.execute("SELECT value FROM metadata WHERE key='identity'").fetchone()
@@ -71,6 +74,60 @@ class CloudSyncService:
                 result[(kind, row.pop('id'))] = row
         return result
 
+    def _command_results(self, conn):
+        return [dict(id=row[0], success=bool(row[1]), error=row[2])
+                for row in conn.execute('SELECT id,success,error FROM command_results ORDER BY id LIMIT 100')]
+
+    def _apply_command(self, command):
+        if (not isinstance(command, dict) or set(command) != {'id', 'kind', 'localId', 'data', 'create'} or
+                type(command['id']) is not int or type(command['localId']) is not int or
+                type(command['create']) is not bool or not isinstance(command['data'], dict)):
+            raise FitTrackError('فرمان دریافتی از سایت معتبر نیست.')
+        kind, local_id, data = command['kind'], command['localId'], command['data']
+        if kind == 'plan':
+            expected = {'name', 'price', 'gender', 'sessions_per_month', 'is_active'}
+            if set(data) != expected:
+                raise FitTrackError('اطلاعات پلن دریافتی معتبر نیست.')
+            self.plans.apply_remote(local_id, data, create=command['create'])
+            return
+        if kind != 'member' or command['create']:
+            raise FitTrackError('نوع فرمان دریافتی از سایت پشتیبانی نمی‌شود.')
+        allowed = {'first_name', 'last_name', 'mobile', 'national_id', 'address', 'plan', 'debt', 'payment'}
+        if not data or not set(data).issubset(allowed):
+            raise FitTrackError('اطلاعات عضو دریافتی معتبر نیست.')
+        with closing(sqlite3.connect(self.members_path, timeout=15)) as members:
+            members.row_factory = sqlite3.Row
+            current = members.execute('SELECT * FROM users WHERE id=?', (local_id,)).fetchone()
+            if not current:
+                raise FitTrackError('عضو موردنظر در برنامه باشگاه پیدا نشد.')
+            mobile = data.get('mobile')
+            national_id = data.get('national_id')
+            if mobile and members.execute('SELECT 1 FROM users WHERE mobile=? AND id!=?', (mobile, local_id)).fetchone():
+                raise FitTrackError('شماره موبایل در برنامه باشگاه تکراری است.')
+            if national_id and members.execute('SELECT 1 FROM users WHERE national_id=? AND id!=?', (national_id, local_id)).fetchone():
+                raise FitTrackError('کد ملی در برنامه باشگاه تکراری است.')
+            if mobile and mobile != current['mobile']:
+                with closing(sqlite3.connect(self.state_path.resolve().as_uri() + '?mode=ro', uri=True, timeout=8)) as state:
+                    if state.execute('SELECT 1 FROM attendance_sessions WHERE member_id=? AND checked_out_at IS NULL', (local_id,)).fetchone():
+                        raise FitTrackError('ابتدا خروج این عضو از باشگاه ثبت شود.')
+            if 'plan' in data and not any(plan.name == data['plan'] and plan.is_active for plan in self.plans.load()):
+                raise FitTrackError('پلن انتخاب‌شده در فهرست فعال باشگاه پیدا نشد.')
+            assignments = ','.join(f'{field}=?' for field in data)
+            members.execute(f'UPDATE users SET {assignments} WHERE id=?', (*data.values(), local_id))
+            members.commit()
+
+    def _store_command_results(self, commands):
+        for command in commands:
+            try:
+                self._apply_command(command)
+                success, message = 1, ''
+            except Exception as exc:
+                success, message = 0, str(exc)[:500] or 'اعمال تغییر در برنامه باشگاه ناموفق بود.'
+            with closing(sqlite3.connect(self.queue_path, timeout=15)) as conn:
+                conn.execute('INSERT OR REPLACE INTO command_results VALUES (?,?,?)',
+                             (command.get('id', 0), success, message))
+                conn.commit()
+
     def run(self):
         # Serializes UI enrollment and timer work; SQLite also serializes separate processes.
         with self.lock:
@@ -89,7 +146,8 @@ class CloudSyncService:
                         # Only remove rows previously acknowledged from this exact database.
                         changes += [dict(kind=k, id=i, data=None) for k, i in previous if (k, i) not in current]
                         seq = conn.execute("SELECT value FROM metadata WHERE key='sequence'").fetchone()
-                        body = dict(source=self.source, sequence=int(seq[0]) + 1 if seq else 1, records=changes[:100])
+                        body = dict(source=self.source, sequence=int(seq[0]) + 1 if seq else 1,
+                                    records=changes[:100], commandResults=self._command_results(conn))
                         conn.execute('INSERT INTO pending VALUES (1,?)', (encoded(body),))
                         conn.commit()  # Persist before touching the network, including on abrupt shutdown.
                         conn.execute('BEGIN IMMEDIATE')
@@ -101,6 +159,10 @@ class CloudSyncService:
                     response = self.api._request('POST', '/api/desktop/sync', body)
                     if response.get('sequence') != body['sequence']:
                         raise FitTrackError('تأیید همگام‌سازی سایت معتبر نیست.')
+                    commands = response.get('commands', [])
+                    result_acks = response.get('resultAcks', [])
+                    if not isinstance(commands, list) or not isinstance(result_acks, list) or any(type(value) is not int for value in result_acks):
+                        raise FitTrackError('پاسخ فرمان‌های سایت معتبر نیست.')
                     for record in body['records']:
                         key = (record['kind'], record['id'])
                         if record['data'] is None:
@@ -109,10 +171,13 @@ class CloudSyncService:
                             conn.execute('INSERT OR REPLACE INTO sent VALUES (?,?,?)', (*key, encoded(record['data'])))
                     conn.execute("INSERT OR REPLACE INTO metadata VALUES ('sequence',?)", (str(body['sequence']),))
                     conn.execute('DELETE FROM pending')
+                    for command_id in result_acks:
+                        conn.execute('DELETE FROM command_results WHERE id=?', (command_id,))
                     conn.execute("INSERT OR REPLACE INTO metadata VALUES ('last_success',?)", (datetime.now(timezone.utc).isoformat(),))
                     conn.commit()
+                    self._store_command_results(commands)
                     count += len(body['records'])
-                    if not body['records']:
+                    if not body['records'] and not commands and not body['commandResults']:
                         # An authenticated heartbeat verifies connectivity even on quiet days.
                         break
             else:

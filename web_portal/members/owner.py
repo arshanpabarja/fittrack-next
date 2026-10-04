@@ -10,12 +10,12 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Max, Q
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from .models import LegacyMember, LoginEvent, MembershipApplication, OwnerAudit, Plan, User
+from .models import GymRemoteCommand, LegacyMember, LoginEvent, MembershipApplication, OwnerAudit, Plan, User
 from .views import _is_admin, _desktop_plan_payload, _desktop_plan_values, body_json, error, normalize_digits, MOBILE_RE, NATIONAL_ID_RE
 
 
@@ -66,6 +66,21 @@ def member_rows():
                          address=gym['address'] or '', role='member', status='gym', plan=gym['plan'],
                          joinedAt=gym['signup_time'], lastLogin=None, debt=gym['debt'] or 0,
                          payment=gym['payment'] or 0, sessionsUsed=gym['used_sessions'] or 0))
+    pending = {}
+    for command in GymRemoteCommand.objects.filter(kind='member', status=GymRemoteCommand.Status.PENDING).order_by('id'):
+        pending[command.local_id] = command
+    for row in rows:
+        command = pending.get(row['gymId'])
+        if not command:
+            continue
+        data = command.data
+        for local_key, api_key in [('first_name', 'firstName'), ('last_name', 'lastName'),
+                                   ('mobile', 'mobile'), ('national_id', 'nationalId'),
+                                   ('address', 'address'), ('plan', 'plan'),
+                                   ('debt', 'debt'), ('payment', 'payment')]:
+            if local_key in data:
+                row[api_key] = data[local_key] or ''
+        row['remotePending'] = True
     return rows
 
 
@@ -100,8 +115,6 @@ def member(request, source, member_id):
         user = User.objects.filter(Q(membership_application__legacy_member_id=gym.id) | Q(mobile=gym.mobile)).first()
     if user and user.role == User.Role.ADMIN:
         return error('حساب مدیر از این فرم قابل تغییر نیست.', 403)
-    if gym and settings.FITTRACK_REMOTE_SYNC:
-        return error('اطلاعات این عضو در برنامه باشگاه ویرایش و خودکار به سایت منتقل می‌شود.', 409)
     values = {}
     for api_key, key, limit in [('firstName', 'first_name', 150), ('lastName', 'last_name', 150), ('mobile', 'mobile', 11), ('nationalId', 'national_id', 10), ('address', 'address', 2000)]:
         if api_key not in payload:
@@ -120,7 +133,7 @@ def member(request, source, member_id):
                 return error('شماره موبایل یا کد ملی تکراری است.', 409)
         values[key] = value or (None if key == 'national_id' else '')
     # Changing the identity of someone checked in would break desktop checkout.
-    if gym and 'mobile' in values and values['mobile'] != gym.mobile:
+    if gym and not settings.FITTRACK_REMOTE_SYNC and 'mobile' in values and values['mobile'] != gym.mobile:
         try:
             with closing(attendance_connection()) as conn:
                 if conn.execute('SELECT 1 FROM attendance_sessions WHERE member_id=? AND checked_out_at IS NULL', (gym.id,)).fetchone():
@@ -144,6 +157,16 @@ def member(request, source, member_id):
             return error('پلن فعال انتخاب کنید.')
     try:
         with transaction.atomic():
+            if gym and settings.FITTRACK_REMOTE_SYNC:
+                command_data = {**values, **money, **({'plan': plan.name} if plan else {})}
+                if not command_data:
+                    return error('تغییری برای ذخیره ارسال نشده است.')
+                GymRemoteCommand.objects.create(
+                    kind='member', local_id=gym.pk, data=command_data, web_user=user,
+                    selected_plan=plan,
+                )
+                audit(request, f'ارسال ویرایش عضو {source}:{member_id} به برنامه باشگاه')
+                return JsonResponse({'ok': True, 'queued': True})
             if gym:
                 LegacyMember.objects.filter(pk=gym.pk).update(**values, **money, **({'plan': plan.name} if plan else {}))
             if user:
@@ -228,9 +251,18 @@ def write_plan_catalog(plan, old_name=None):
 @require_http_methods(['GET', 'POST', 'PATCH'])
 def plans(request, plan_id=None):
     if request.method == 'GET':
-        return JsonResponse({'ok': True, 'plans': [_desktop_plan_payload(p) for p in Plan.objects.all()]})
-    if settings.FITTRACK_REMOTE_SYNC:
-        return error('پلن‌ها در برنامه باشگاه ویرایش و خودکار به سایت منتقل می‌شوند.', 409)
+        rows = {p.id: _desktop_plan_payload(p) for p in Plan.objects.all()}
+        for command in GymRemoteCommand.objects.filter(kind='plan', status=GymRemoteCommand.Status.PENDING).order_by('id'):
+            rows[command.local_id] = {
+                'id': command.local_id,
+                'name': command.data['name'],
+                'price': command.data['price'],
+                'gender': command.data['gender'],
+                'sessionsPerMonth': command.data['sessions_per_month'],
+                'isActive': command.data['is_active'],
+                'remotePending': True,
+            }
+        return JsonResponse({'ok': True, 'plans': list(rows.values())})
     if (request.method == 'PATCH') != (plan_id is not None):
         return error('درخواست معتبر نیست.')
     current = Plan.objects.filter(pk=plan_id).first() if plan_id else None
@@ -247,6 +279,21 @@ def plans(request, plan_id=None):
     matches = re.findall(r'(\d+)\s*جلسه', values['name'].translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')))
     if not matches or int(matches[-1]) != values['sessions_per_month']:
         return error('نام پلن باید تعداد جلسات را داشته باشد؛ مثال: بدنسازی ۱۲ جلسه در ماه')
+    if settings.FITTRACK_REMOTE_SYNC:
+        if current and GymRemoteCommand.objects.filter(
+                kind='plan', local_id=current.pk, status=GymRemoteCommand.Status.PENDING).exists():
+            return error('یک تغییر برای این پلن هنوز در انتظار اعمال در باشگاه است.', 409)
+        if current:
+            local_id = current.pk
+        else:
+            max_plan = Plan.objects.aggregate(value=Max('id'))['value'] or 0
+            max_command = GymRemoteCommand.objects.filter(kind='plan').aggregate(value=Max('local_id'))['value'] or 0
+            local_id = max(max_plan, max_command) + 1
+        GymRemoteCommand.objects.create(
+            kind='plan', local_id=local_id, data=values, create=current is None,
+        )
+        audit(request, f'ارسال {"ویرایش" if current else "افزودن"} پلن {local_id} به برنامه باشگاه')
+        return JsonResponse({'ok': True, 'queued': True, 'planId': local_id})
     old_name = current.name if current else None
     try:
         with transaction.atomic():

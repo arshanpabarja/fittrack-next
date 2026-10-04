@@ -218,3 +218,24 @@ class GymSyncRecord(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['kind', 'local_id'], name='unique_gym_sync_record')]
+
+
+class GymRemoteCommand(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'در انتظار دریافت باشگاه'
+        APPLIED = 'applied', 'اعمال‌شده'
+        FAILED = 'failed', 'ناموفق'
+
+    kind = models.CharField(max_length=16)
+    local_id = models.PositiveBigIntegerField()
+    data = models.JSONField(default=dict)
+    create = models.BooleanField(default=False)
+    web_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    selected_plan = models.ForeignKey(Plan, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True)
+    error = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['id']

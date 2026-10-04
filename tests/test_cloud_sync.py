@@ -80,3 +80,33 @@ class CloudQueueTests(unittest.TestCase):
         self.api.base_url = 'http://lifeboxgym.com'
         with self.assertRaises(Exception):
             self.service()
+
+    def test_remote_member_command_is_applied_once_and_acknowledged(self):
+        command = {
+            'id': 7, 'kind': 'member', 'localId': 1, 'create': False,
+            'data': {'first_name': 'Online', 'debt': 250},
+        }
+        delivered = False
+
+        def response(method, path, body):
+            nonlocal delivered
+            results = body.get('commandResults', [])
+            if not delivered:
+                delivered = True
+                commands = [command]
+            else:
+                commands = []
+            return dict(ok=True, sequence=body['sequence'], commands=commands,
+                        resultAcks=[item['id'] for item in results])
+
+        self.api._request.side_effect = response
+        self.service().run()
+        with closing(sqlite3.connect(self.members)) as conn:
+            row = conn.execute('SELECT first_name,debt FROM users WHERE id=1').fetchone()
+        self.assertEqual(row, ('Online', 250))
+        bodies = [call.args[2] for call in self.api._request.call_args_list]
+        self.assertTrue(any(body.get('commandResults') == [
+            {'id': 7, 'success': True, 'error': ''}
+        ] for body in bodies))
+        with closing(sqlite3.connect(self.state.with_name('cloud_sync.db'))) as conn:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM command_results').fetchone()[0], 0)

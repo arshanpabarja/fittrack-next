@@ -69,7 +69,7 @@ class PlansService:
                 ))
         return tuple(plans)
 
-    def save(self, values, plan_id=None):
+    def save(self, values, plan_id=None, *, create_id=None):
         name = re.sub(r"\s+", " ", str(values.get("name", ""))).strip()
         if len(name) < 3:
             raise ValidationError("نام پلن باید حداقل سه کاراکتر باشد.")
@@ -92,7 +92,9 @@ class PlansService:
 
         plans = list(self.load())
         if plan_id is None:
-            saved_id = max((plan.id for plan in plans), default=0) + 1
+            saved_id = int(create_id) if create_id is not None else max((plan.id for plan in plans), default=0) + 1
+            if saved_id <= 0 or any(plan.id == saved_id for plan in plans):
+                raise ValidationError("شناسه پلن جدید با فهرست محلی تداخل دارد.")
         else:
             saved_id = int(plan_id)
             if not any(plan.id == saved_id for plan in plans):
@@ -110,6 +112,10 @@ class PlansService:
             plans.append(saved)
         self._write_local(plans)
         return saved
+
+    def apply_remote(self, plan_id, values, *, create=False):
+        """Apply an authenticated website command while preserving its shared ID."""
+        return self.save(values, create_id=plan_id) if create else self.save(values, plan_id=plan_id)
 
     def _write_local(self, plans):
         existing = self._read_local()
