@@ -96,6 +96,13 @@ def members(request):
 
 
 @owner_only
+@require_http_methods(['GET'])
+def overview(request):
+    from .insights import build_overview
+    return JsonResponse(build_overview(member_rows()))
+
+
+@owner_only
 @require_http_methods(['PATCH'])
 def member(request, source, member_id):
     payload = body_json(request)

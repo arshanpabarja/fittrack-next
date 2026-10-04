@@ -99,6 +99,11 @@ class CloudSyncTests(TestCase):
         self.assertTrue(response['attendanceAvailable'])
         self.assertEqual(response['visitCount'], 1)
         self.assertEqual(response['inside'], 1)
+        overview = self.client.get('/api/owner/overview').json()
+        self.assertTrue(overview['attendanceAvailable'])
+        self.assertEqual(overview['metrics']['todayAttendance'], 1)
+        self.assertEqual(overview['metrics']['inside'], 1)
+        self.assertEqual(overview['members'][0]['lastVisit'], timezone.localdate().isoformat())
         edit = self.client.patch('/api/owner/members/gym/51',
             data=json.dumps({'firstName': 'Edited'}), content_type='application/json')
         self.assertEqual(edit.status_code, 200)

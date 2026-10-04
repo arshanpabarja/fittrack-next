@@ -11,10 +11,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Share the desktop's membership calendar rules with the owner dashboard.
+sys.path.insert(0, str(BASE_DIR.parent))
 DEFAULT_FITTRACK_DB_PATH = BASE_DIR.parent.parent / 'database' / 'gym_users.db'
 FITTRACK_DB_PATH = Path(
     os.getenv('FITTRACK_DB_PATH', str(DEFAULT_FITTRACK_DB_PATH))
@@ -31,7 +34,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-lifebox-change-before-publ
 DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
 
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,lifeboxgym.com,https://lifeboxgym.com").split(",") if host.strip()]
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "http://192.168.100.95:8000", "https://lifeboxgym.com").split(",") if origin.strip()]
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "http://192.168.100.95:8000,https://lifeboxgym.com").split(",") if origin.strip()]
 
 
 # Application definition

@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/owner/members', owner.members),
     path('api/owner/members/<str:source>/<int:member_id>', owner.member),
     path('api/owner/activity', owner.activity),
+    path('api/owner/overview', owner.overview),
     path('api/owner/plans', owner.plans),
     path('api/owner/plans/<int:plan_id>', owner.plans),
     path('owner.js', views.public_file, {'name': 'owner.js'}),

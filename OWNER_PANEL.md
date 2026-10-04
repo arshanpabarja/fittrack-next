@@ -27,3 +27,40 @@ For a fresh database: run `web_portal/manage.py migrate`, then
 The setup command imports existing desktop plans and sets/resets the owner password.
 Use Django, not the older lifebox-landing/server.py server, for this panel.
 This runserver launcher is for local development, not a public production deployment.
+
+## Operations dashboard
+
+The owner panel at `/admin` now has focused views for the dashboard, members,
+plans, attendance, recorded renewal payments, and the management audit log.
+The existing Persian interface, yellow LifeBox identity, URLs, forms,
+Django sessions, CSRF protection, and reception workflows are preserved.
+Light and dark themes follow the system initially; a saved manual toggle is available.
+On phones, navigation moves into a keyboard-accessible drawer.
+
+`GET /api/owner/overview` is owner-only, read-only, and marked `no-store`.
+It powers active memberships, memberships expiring within seven days, expired
+or exhausted memberships, debts, daily attendance, and recorded renewal payments.
+Membership validity uses the reception application's one-Jalali-month calendar
+rule and session allowance. Unknown dates are kept separate from expired memberships.
+The 14-day absence filter requires a recorded last visit and a currently valid
+membership; an unavailable attendance source is not treated as no visits.
+
+The dashboard displays a 7- or 30-day payment chart, an hourly attendance chart,
+recent renewal payments, and member follow-up queues. Member filters combine
+with search, pagination, and CSV export. The renewal-payment view also exports CSV.
+Tables provide the underlying payment details; attendance charts have text alternatives.
+Local installation reads the reception state database; remote installations use
+mirrored records. Unavailable sources show `—`, not a fabricated zero.
+
+**Financial scope:** payment totals include recorded membership renewals only.
+They exclude initial purchases, discounts, refunds, and other gym income.
+Month totals use the Gregorian month in Tehran time. CSV exports include at most
+the 500 newest renewal records shown by the API; dashboard totals use all records.
+The existing debt/payment edit fields are accounting corrections, not a payment
+terminal charge. Renewals, initial enrollment, and check-in remain in reception.
+
+The remaining brief requires additional domain support: a complete transaction
+ledger and receipts, configurable membership durations/freezes, classes and capacity,
+member notes and assessments, communication providers, and granular staff permissions.
+Coach and workout management continues through the existing Django admin links.
+These are not presented as implemented features in the owner interface.

@@ -2,7 +2,7 @@ import json
 import sqlite3
 import tempfile
 from contextlib import closing
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -47,7 +47,7 @@ class OwnerTests(TestCase):
         for user in [None,self.member]:
             c=Client()
             if user: c.force_login(user)
-            for path in ['/api/owner/members','/api/owner/activity','/api/owner/plans']:
+            for path in ['/api/owner/members','/api/owner/activity','/api/owner/plans','/api/owner/overview']:
                 self.assertEqual(c.get(path).status_code,403)
         c=Client(enforce_csrf_checks=True); c.force_login(self.owner)
         self.assertEqual(c.post('/api/owner/plans',data='{}',content_type='application/json').status_code,403)
@@ -108,3 +108,52 @@ class OwnerTests(TestCase):
         self.assertEqual(LoginEvent.objects.count(),1)
         c.post('/api/login',data=json.dumps({'mobile':self.member.mobile,'password':'wrong'}),content_type='application/json')
         self.assertEqual(LoginEvent.objects.count(),1)
+
+    def test_overview_uses_membership_calendar_and_exhausted_sessions(self):
+        self.gym.signup_time = '1405-06-18'
+        self.gym.debt = 250
+        self.gym.save()
+        LegacyMember.objects.create(first_name='Exhausted', last_name='Member', mobile='09120000003',
+                                   gender='زن', plan=self.plan.name, signup_time='1405-07-01', used_sessions=12)
+        with patch('members.insights.timezone.localdate', return_value=date(2026, 10, 4)):
+            response = self.client.get('/api/owner/overview')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Cache-Control'], 'no-store')
+        data = response.json()
+        self.assertEqual(data['metrics']['total'], 2)  # Owner accounts are excluded.
+        self.assertEqual(data['metrics']['expiring'], 1)
+        self.assertEqual(data['metrics']['expired'], 1)
+        self.assertEqual(data['metrics']['debt'], 250)
+        detail = next(m for m in data['members'] if m['key'] == f'web:{self.member.id}')
+        self.assertEqual(detail['expiresAt'], '2026-10-10')
+        self.assertEqual(detail['daysLeft'], 6)
+        self.assertNotIn(b'SECRET', response.content)
+        self.assertNotIn(b'PRIVATE', response.content)
+
+    def test_overview_missing_sources_do_not_report_zero(self):
+        self.gym.signup_time = 'not a date'
+        self.gym.save()
+        with self.settings(FITTRACK_ATTENDANCE_PATH=Path(self.tmp.name)/'missing.db'):
+            data = self.client.get('/api/owner/overview').json()
+        self.assertFalse(data['attendanceAvailable'])
+        self.assertFalse(data['paymentsAvailable'])
+        self.assertIsNone(data['metrics']['todayAttendance'])
+        self.assertIsNone(data['metrics']['monthPayments'])
+        self.assertEqual(data['metrics']['unknown'], 1)
+        self.assertEqual(data['metrics']['inactive'], 0)
+
+    def test_overview_payment_month_uses_tehran_time_and_renewals_only(self):
+        with closing(sqlite3.connect(self.attendance)) as c:
+            c.execute('CREATE TABLE membership_renewals(id INTEGER,member_id INTEGER,new_plan TEXT,paid_amount INTEGER,payment_reference TEXT,renewed_at TEXT)')
+            c.execute('INSERT INTO membership_renewals VALUES(1,?,?,?,?,?)',
+                      (self.gym.id, self.plan.name, 300, 'receipt-1', '2026-09-30 21:15:00'))
+            c.commit()
+        self.gym.payment = 10000
+        self.gym.save()
+        with patch('members.insights.timezone.localdate', return_value=date(2026, 10, 4)):
+            data = self.client.get('/api/owner/overview').json()
+        self.assertEqual(data['metrics']['monthPayments'], 300)
+        self.assertEqual(data['metrics']['todayPayments'], 0)
+        self.assertEqual(len(data['series']), 30)
+        self.assertEqual(data['payments'][0]['name'], 'Member One')
+        self.assertEqual(data['payments'][0]['at'], '2026-10-01T00:45:00+03:30')
