@@ -51,7 +51,12 @@ async function api(path, options = {}) {
   try {
     result = await response.json();
   } catch {
-    result = { message: "پاسخ سرور قابل خواندن نیست." };
+    const contentType = response.headers.get("content-type") || "";
+    result = {
+      message: contentType.includes("text/html")
+        ? "پنل به API متصل نیست. سایت را با سرور Django اجرا کنید."
+        : "پاسخ سرور قابل خواندن نیست. دوباره تلاش کنید.",
+    };
   }
   if (!response.ok) {
     const error = new Error(result.message || "درخواست انجام نشد.");
@@ -114,11 +119,14 @@ function initMobileNavigation() {
   const nav = $("[data-mobile-nav]");
   const backdrop = $("[data-nav-backdrop]");
   if (!toggle || !nav) return;
+  const landing = document.body.classList.contains("landing-body");
+  const background = landing ? $$("main, .landing-footer, .header-actions, .hero-header .logo") : [];
 
   const setOpen = (open, returnFocus = false) => {
     nav.classList.toggle("is-open", open);
     backdrop?.classList.toggle("is-visible", open);
     document.body.classList.toggle("nav-open", open);
+    background.forEach((element) => { element.inert = open; });
     toggle.setAttribute("aria-expanded", String(open));
     toggle.setAttribute("aria-label", open ? "\u0628\u0633\u062a\u0646 \u0645\u0646\u0648" : "\u0628\u0627\u0632\u06a9\u0631\u062f\u0646 \u0645\u0646\u0648");
     if (open) $("a", nav)?.focus();
@@ -130,6 +138,17 @@ function initMobileNavigation() {
   $$("a", nav).forEach((link) => link.addEventListener("click", () => setOpen(false)));
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && nav.classList.contains("is-open")) setOpen(false, true);
+    if (landing && event.key === "Tab" && nav.classList.contains("is-open")) {
+      const controls = [toggle, ...$$("a", nav)];
+      const index = controls.indexOf(document.activeElement);
+      if (event.shiftKey && index <= 0) {
+        event.preventDefault();
+        controls.at(-1).focus();
+      } else if (!event.shiftKey && (index === controls.length - 1 || index === -1)) {
+        event.preventDefault();
+        toggle.focus();
+      }
+    }
   });
   window.addEventListener("resize", () => {
     if (window.innerWidth > 760 && nav.classList.contains("is-open")) setOpen(false);
@@ -786,7 +805,39 @@ async function initAdmin() {
   root.classList.add("is-ready");
 }
 
+// Load the landing film after the page, when motion and connection allow it.
+// Mobile visitors can start playback using the native controls.
+function initLandingVideo() {
+  const video = document.querySelector("[data-hero-video]");
+  if (!video) return;
+  const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const mobile = window.matchMedia("(max-width: 760px)");
+  const connection = navigator.connection;
+  let pageLoaded = document.readyState === "complete";
+  const applyPreference = () => {
+    const limitedConnection = connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || "");
+    if (motion.matches || mobile.matches || limitedConnection) {
+      video.pause();
+    } else if (pageLoaded) {
+      video.play().catch(() => { /* Native controls remain available. */ });
+    }
+  };
+  applyPreference();
+  motion.addEventListener("change", applyPreference);
+  mobile.addEventListener("change", applyPreference);
+  connection?.addEventListener("change", applyPreference);
+  if (!pageLoaded) {
+    window.addEventListener("load", () => {
+      pageLoaded = true;
+      applyPreference();
+    }, { once: true });
+  }
+  // A normal page navigation releases this listener with the document; keeping
+  // it attached also preserves preference updates after back/forward restore.
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  initLandingVideo();
   initMobileNavigation();
   initNumericInputs();
   initAuthLink();

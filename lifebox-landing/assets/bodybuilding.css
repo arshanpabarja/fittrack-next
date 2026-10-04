@@ -1,0 +1,170 @@
+/* LifeBox preservation: existing light theme, Vazirmatn and yellow tokens.
+   Radius scale: 8px controls, 12px cards, 16px photos and feature panels.
+   Shared training-page layout; homepage, navigation and footer styling stay intact. */
+:is(.bodybuilding-body, .training-body) main { color: var(--black); }
+:is(.bodybuilding-body, .training-body) main h2 { font-size: clamp(26px, 2.9vw, 38px); line-height: 1.65; letter-spacing: -.025em; }
+:is(.bodybuilding-body, .training-body) main h3 { line-height: 1.7; }
+:is(.bodybuilding-body, .training-body) .bb-section { padding-block: 68px; }
+:is(.bodybuilding-body, .training-body) .bb-heading { margin-bottom: 32px; }
+:is(.bodybuilding-body, .training-body) .bb-heading p { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 2; }
+:is(.bodybuilding-body, .training-body) .bb-icon { width: 25px; height: 25px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+:is(.bodybuilding-body, .training-body) .bb-icon-box { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; background: var(--yellow-soft); color: #625200; }
+:is(.bodybuilding-body, .training-body) .bb-button { gap: 20px; }
+:is(.bodybuilding-body, .training-body) .bb-button .bb-icon { width: 20px; height: 20px; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-hero { padding-block: 40px 56px; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-hero-layout { display: grid; grid-template-columns: .92fr 1.08fr; align-items: center; gap: 56px; }
+:is(.bodybuilding-body, .training-body) .hero-copy h1 { font-size: clamp(44px, 4.8vw, 64px); line-height: 1.55; }
+:is(.bodybuilding-body, .training-body) .hero-copy h1::first-line { text-decoration: none; }
+:is(.bodybuilding-body, .training-body) .hero-copy h1 span { text-decoration: underline; text-decoration-color: var(--yellow); text-decoration-thickness: 8px; text-underline-offset: 10px; }
+:is(.bodybuilding-body, .training-body) .hero-copy > span { max-width: 430px; font-size: 16px; }
+:is(.bodybuilding-body, .training-body) .hero-actions { gap: 18px; }
+:is(.bodybuilding-body, .training-body) .hero-actions .button { font-size: 14px; padding-inline: 26px; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-hero-photo { min-width: 0; height: clamp(380px, 34vw, 460px); border-radius: 16px; overflow: hidden; background: var(--soft); }
+:is(.bodybuilding-body, .training-body) .bodybuilding-hero-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 60% center; }
+:is(.bodybuilding-body, .training-body) .bb-goals { padding-block: 32px 64px; }
+:is(.bodybuilding-body, .training-body) .bb-goals .bb-heading { border-top: 1px solid var(--border); padding-top: 40px; }
+:is(.bodybuilding-body, .training-body) .bb-goal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; list-style: none; }
+:is(.bodybuilding-body, .training-body) .bb-goal-grid li { padding: 26px 22px; border: 1px solid var(--border); border-radius: 12px; }
+:is(.bodybuilding-body, .training-body) .bb-goal-grid h3 { font-size: 18px; margin-top: 20px; }
+:is(.bodybuilding-body, .training-body) .bb-goal-grid p { margin-top: 8px; color: var(--muted); font-size: 13px; line-height: 2; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-options { background: #fafaf7; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-options-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-option { padding: 32px 36px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+:is(.bodybuilding-body, .training-body) .bodybuilding-option-private { background: var(--yellow-soft); border-color: #e8dda2; }
+:is(.bodybuilding-body, .training-body) .bb-option-top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+:is(.bodybuilding-body, .training-body) .bb-option-top .bb-icon { width: 32px; height: 32px; color: #625200; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-option h3 { font-size: 27px; }
+:is(.bodybuilding-body, .training-body) .bb-option-lead { margin-top: 12px; color: var(--muted); font-size: 14px; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-option ul { display: grid; gap: 16px; list-style: none; margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
+:is(.bodybuilding-body, .training-body) .bodybuilding-option li { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-option li .bb-icon { width: 19px; height: 19px; color: #625200; }
+:is(.bodybuilding-body, .training-body) .bodybuilding-options-note { margin-top: 24px; font-size: 13px; color: var(--muted); }
+:is(.bodybuilding-body, .training-body) .bb-process-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; list-style: none; }
+:is(.bodybuilding-body, .training-body) .bb-process-list li { min-width: 0; position: relative; }
+:is(.bodybuilding-body, .training-body) .bb-step-number { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 8px; background: var(--yellow); font-size: 23px; margin-bottom: 24px; }
+:is(.bodybuilding-body, .training-body) .bb-process-list li:not(:last-child)::after { content: ""; position: absolute; inset-inline-start: 68px; inset-inline-end: -16px; top: 26px; height: 1px; background: var(--border); }
+:is(.bodybuilding-body, .training-body) .bb-process-list h3 { font-size: 18px; }
+:is(.bodybuilding-body, .training-body) .bb-process-list p { margin-top: 8px; max-width: 25ch; font-size: 13px; color: var(--muted); line-height: 2; }
+:is(.bodybuilding-body, .training-body) .bb-why { padding-top: 16px; }
+:is(.bodybuilding-body, .training-body) .bb-why-layout { display: grid; grid-template-columns: .85fr 1.15fr; gap: 48px; align-items: stretch; }
+:is(.bodybuilding-body, .training-body) .bb-why-photo { border-radius: 16px; overflow: hidden; min-height: 450px; background: var(--soft); }
+:is(.bodybuilding-body, .training-body) .bb-why-photo img { height: 100%; width: 100%; object-fit: cover; object-position: 42% center; }
+:is(.bodybuilding-body, .training-body) .bb-why-content { padding-block: 12px; }
+:is(.bodybuilding-body, .training-body) .bb-why-list { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; }
+:is(.bodybuilding-body, .training-body) .bb-why-list li { min-width: 0; }
+:is(.bodybuilding-body, .training-body) .bb-why-list .bb-icon { color: #625200; margin-bottom: 12px; }
+:is(.bodybuilding-body, .training-body) .bb-why-list h3 { font-size: 16px; }
+:is(.bodybuilding-body, .training-body) .bb-why-list p { margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 2; }
+:is(.bodybuilding-body, .training-body) .bb-why-list li:last-child { grid-column: 1 / -1; display: grid; grid-template-columns: 25px 1fr; gap: 0 14px; border-top: 1px solid var(--border); padding-top: 22px; }
+:is(.bodybuilding-body, .training-body) .bb-why-list li:last-child .bb-icon { grid-row: span 2; margin-top: 3px; }
+:is(.bodybuilding-body, .training-body) .bb-why-list li:last-child p { grid-column: 2; }
+:is(.bodybuilding-body, .training-body) .bb-gallery { background: #fafaf7; }
+:is(.bodybuilding-body, .training-body) .bb-gallery-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: 200px 200px 230px; gap: 16px; }
+:is(.bodybuilding-body, .training-body) .bb-gallery-grid figure { min-width: 0; border-radius: 16px; overflow: hidden; background: var(--soft); }
+:is(.bodybuilding-body, .training-body) .bb-gallery-grid img { width: 100%; height: 100%; object-fit: cover; }
+:is(.bodybuilding-body, .training-body) .bb-gallery-grid figure:nth-child(1) { grid-column: span 7; grid-row: span 2; }
+:is(.bodybuilding-body, .training-body) .bb-gallery-grid figure:nth-child(2), :is(.bodybuilding-body, .training-body) .bb-gallery-grid figure:nth-child(3), :is(.bodybuilding-body, .training-body) .bb-gallery-grid figure:nth-child(4) { grid-column: span 5; }
+:is(.bodybuilding-body, .training-body) .bb-gallery-grid figure:nth-child(5) { grid-column: span 7; }
+:is(.bodybuilding-body, .training-body) .bb-coach-card { display: grid; grid-template-columns: minmax(240px, .65fr) 1fr; gap: 44px; max-width: 900px; padding: 24px; border: 1px solid var(--border); border-radius: 16px; align-items: center; }
+:is(.bodybuilding-body, .training-body) .bb-coach-portrait { display: grid; place-content: center; justify-items: center; gap: 16px; background: var(--soft); border-radius: 12px; aspect-ratio: 4 / 5; min-width: 0; color: var(--muted); }
+:is(.bodybuilding-body, .training-body) .bb-coach-portrait img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+:is(.bodybuilding-body, .training-body) .bb-coach-portrait > span { font-size: 80px; line-height: 1.5; color: #c4c4bc; }
+:is(.bodybuilding-body, .training-body) .bb-coach-portrait > small { font-size: 12px; }
+:is(.bodybuilding-body, .training-body) .bb-coach-copy { padding: 12px 0 12px 16px; }
+:is(.bodybuilding-body, .training-body) .bb-coach-specialty { color: #625200; font-size: 13px; }
+:is(.bodybuilding-body, .training-body) .bb-coach-copy h3 { font-size: clamp(28px, 3vw, 38px); margin-block: 12px 16px; }
+:is(.bodybuilding-body, .training-body) .bb-coach-copy > p:last-of-type { font-size: 15px; line-height: 2; max-width: 37ch; color: var(--muted); }
+:is(.bodybuilding-body, .training-body) .bb-coach-copy .home-text-link { margin-top: 24px; }
+:is(.bodybuilding-body, .training-body) .bb-faq { padding-top: 20px; }
+:is(.bodybuilding-body, .training-body) .bb-faq-layout { display: grid; grid-template-columns: .55fr 1fr; gap: 56px; padding-top: 48px; border-top: 1px solid var(--border); }
+:is(.bodybuilding-body, .training-body) .bb-faq-list details { border-bottom: 1px solid var(--border); }
+:is(.bodybuilding-body, .training-body) .bb-faq-list details:first-child { border-top: 1px solid var(--border); }
+:is(.bodybuilding-body, .training-body) .bb-faq-list summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 76px; padding-block: 20px; font-size: 15px; cursor: pointer; list-style: none; }
+:is(.bodybuilding-body, .training-body) .bb-faq-list summary::-webkit-details-marker { display: none; }
+:is(.bodybuilding-body, .training-body) .bb-faq-list summary::after { content: "+"; display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; background: var(--yellow-soft); color: #625200; font-family: Arial, sans-serif; font-size: 22px; line-height: 1; }
+:is(.bodybuilding-body, .training-body) .bb-faq-list details[open] summary::after { content: "−"; background: var(--yellow); }
+:is(.bodybuilding-body, .training-body) .bb-faq-list details p { padding-block: 0 24px; padding-inline-end: 48px; font-size: 14px; color: var(--muted); line-height: 2; }
+:is(.bodybuilding-body, .training-body) .bb-final { padding-block: 12px 72px; }
+:is(.bodybuilding-body, .training-body) .bb-final-panel { display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: center; padding: 48px 52px; background: var(--yellow); border-radius: 16px; }
+:is(.bodybuilding-body, .training-body) .bb-final h2 { max-width: 650px; font-size: clamp(28px, 3.3vw, 42px); line-height: 1.7; }
+:is(.bodybuilding-body, .training-body) .bb-final p { margin-top: 12px; color: #464022; font-size: 15px; }
+:is(.bodybuilding-body, .training-body) .bb-final .button { background: var(--black); color: #fff; }
+:is(.bodybuilding-body, .training-body) .bb-final .button:hover { background: #30302e; }
+
+@media (prefers-reduced-motion: no-preference) {
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid li { transition: border-color .2s ease, transform .2s ease; }
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid li:hover { border-color: #baa01d; transform: translateY(-3px); }
+  :is(.bodybuilding-body, .training-body) .bb-gallery-grid img { transition: transform .35s ease; }
+  :is(.bodybuilding-body, .training-body) .bb-gallery-grid figure:hover img { transform: scale(1.025); }
+  :is(.bodybuilding-body, .training-body) .bb-button .bb-icon { transition: transform .2s ease; }
+  :is(.bodybuilding-body, .training-body) .bb-button:hover .bb-icon { transform: translateX(-3px); }
+}
+@media (max-width: 1024px) {
+  :is(.bodybuilding-body, .training-body) .bodybuilding-hero-layout { gap: 32px; }
+  :is(.bodybuilding-body, .training-body) .hero-actions { align-items: flex-start; gap: 12px; }
+  :is(.bodybuilding-body, .training-body) .hero-copy h1 { font-size: 44px; }
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :is(.bodybuilding-body, .training-body) .bb-why-layout { gap: 28px; }
+  :is(.bodybuilding-body, .training-body) .bodybuilding-option { padding: 28px; }
+  :is(.bodybuilding-body, .training-body) .bb-coach-card { gap: 28px; }
+  :is(.bodybuilding-body, .training-body) .bb-final-panel { padding: 36px; }
+  :is(.bodybuilding-body, .training-body) .bb-final h2 { font-size: 32px; }
+}
+@media (max-width: 760px) {
+  :is(.bodybuilding-body, .training-body) .bb-section { padding-block: 48px; }
+  :is(.bodybuilding-body, .training-body) main h2 { font-size: 28px; }
+  :is(.bodybuilding-body, .training-body) .bb-heading { margin-bottom: 24px; }
+  :is(.bodybuilding-body, .training-body) .bodybuilding-hero { padding-block: 28px 32px; }
+  :is(.bodybuilding-body, .training-body) .bodybuilding-hero-layout { grid-template-columns: 1fr; gap: 28px; }
+  :is(.bodybuilding-body, .training-body) .hero-copy h1 { font-size: clamp(40px, 7.5vw, 54px); }
+  :is(.bodybuilding-body, .training-body) .hero-copy > span { max-width: 48ch; font-size: 15px; }
+  :is(.bodybuilding-body, .training-body) .hero-copy h1 span { text-decoration-thickness: 6px; text-underline-offset: 9px; }
+  :is(.bodybuilding-body, .training-body) .bodybuilding-hero-photo { height: auto; aspect-ratio: 4 / 3; }
+  :is(.bodybuilding-body, .training-body) .bb-goals { padding-block: 16px 48px; }
+  :is(.bodybuilding-body, .training-body) .bb-goals .bb-heading { padding-top: 28px; }
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid { gap: 12px; }
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid li { padding: 22px 18px; }
+  :is(.bodybuilding-body, .training-body) .bodybuilding-options-grid { grid-template-columns: 1fr; gap: 16px; }
+  :is(.bodybuilding-body, .training-body) .bodybuilding-option { padding: 28px 24px; }
+  :is(.bodybuilding-body, .training-body) .bodybuilding-option h3 { font-size: 25px; }
+  :is(.bodybuilding-body, .training-body) .bb-process-list { grid-template-columns: 1fr; gap: 0; }
+  :is(.bodybuilding-body, .training-body) .bb-process-list li { display: grid; grid-template-columns: 52px 1fr; gap: 4px 20px; padding-bottom: 32px; }
+  :is(.bodybuilding-body, .training-body) .bb-process-list li:last-child { padding-bottom: 0; }
+  :is(.bodybuilding-body, .training-body) .bb-step-number { grid-row: span 2; margin: 0; align-self: start; }
+  :is(.bodybuilding-body, .training-body) .bb-process-list p { grid-column: 2; max-width: none; margin-top: 0; }
+  :is(.bodybuilding-body, .training-body) .bb-process-list li:not(:last-child)::after { inset-inline-start: 26px; inset-inline-end: auto; top: 60px; bottom: 8px; width: 1px; height: auto; }
+  :is(.bodybuilding-body, .training-body) .bb-why { padding-top: 0; }
+  :is(.bodybuilding-body, .training-body) .bb-why-layout { grid-template-columns: 1fr; gap: 24px; }
+  :is(.bodybuilding-body, .training-body) .bb-why-photo { min-height: 0; aspect-ratio: 16 / 10; }
+  :is(.bodybuilding-body, .training-body) .bb-why-content { padding-block: 0; }
+  :is(.bodybuilding-body, .training-body) .bb-why-list { gap: 24px; }
+  :is(.bodybuilding-body, .training-body) .bb-gallery-grid { grid-template-columns: 1fr; grid-template-rows: none; gap: 16px; }
+  :is(.bodybuilding-body, .training-body) .bb-gallery-grid figure:nth-child(n) { grid-column: auto; grid-row: auto; aspect-ratio: 16 / 10; }
+  :is(.bodybuilding-body, .training-body) .bb-coach-card { grid-template-columns: .7fr 1fr; padding: 16px; gap: 24px; }
+  :is(.bodybuilding-body, .training-body) .bb-coach-copy { padding: 8px 0; }
+  :is(.bodybuilding-body, .training-body) .bb-coach-copy h3 { font-size: 27px; }
+  :is(.bodybuilding-body, .training-body) .bb-coach-copy > p:last-of-type { font-size: 14px; }
+  :is(.bodybuilding-body, .training-body) .bb-faq { padding-top: 0; }
+  :is(.bodybuilding-body, .training-body) .bb-faq-layout { grid-template-columns: 1fr; gap: 0; padding-top: 32px; }
+  :is(.bodybuilding-body, .training-body) .bb-faq-list summary { font-size: 14px; min-height: 72px; }
+  :is(.bodybuilding-body, .training-body) .bb-final { padding-block: 0 48px; }
+  :is(.bodybuilding-body, .training-body) .bb-final-panel { grid-template-columns: 1fr; padding: 32px 24px; gap: 24px; }
+  :is(.bodybuilding-body, .training-body) .bb-final .button { justify-self: start; }
+}
+@media (max-width: 480px) {
+  :is(.bodybuilding-body, .training-body) .hero-actions { flex-direction: column; align-items: flex-start; gap: 10px; }
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid { grid-template-columns: 1fr; }
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid li { display: grid; grid-template-columns: 48px 1fr; gap: 4px 16px; padding: 20px; }
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid .bb-icon-box { grid-row: span 2; }
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid h3 { margin-top: 0; font-size: 17px; }
+  :is(.bodybuilding-body, .training-body) .bb-goal-grid p { grid-column: 2; margin-top: 0; }
+  :is(.bodybuilding-body, .training-body) .bb-why-list { grid-template-columns: 1fr; }
+  :is(.bodybuilding-body, .training-body) .bb-why-list li { display: grid; grid-template-columns: 25px 1fr; gap: 0 14px; }
+  :is(.bodybuilding-body, .training-body) .bb-why-list .bb-icon { grid-row: span 2; margin-top: 3px; }
+  :is(.bodybuilding-body, .training-body) .bb-why-list p { grid-column: 2; }
+  :is(.bodybuilding-body, .training-body) .bb-coach-card { grid-template-columns: 1fr; gap: 20px; padding: 20px; }
+  :is(.bodybuilding-body, .training-body) .bb-coach-portrait { aspect-ratio: 4 / 3; }
+  :is(.bodybuilding-body, .training-body) .bb-coach-copy h3 { font-size: 30px; }
+  :is(.bodybuilding-body, .training-body) .bb-faq-list summary { gap: 12px; }
+  :is(.bodybuilding-body, .training-body) .bb-faq-list details p { padding-inline-end: 0; }
+}

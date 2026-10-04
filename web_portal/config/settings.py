@@ -30,8 +30,8 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-lifebox-change-before-publ
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,192.168.100.95").split(",") if host.strip()]
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "http://192.168.100.95:8000").split(",") if origin.strip()]
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,lifeboxgym.com,https://lifeboxgym.com").split(",") if host.strip()]
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "http://192.168.100.95:8000", "https://lifeboxgym.com").split(",") if origin.strip()]
 
 
 # Application definition
@@ -138,7 +138,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 FITTRACK_DESKTOP_API_TOKEN = os.getenv('FITTRACK_DESKTOP_API_TOKEN', 'dev-fittrack-desktop-token-change-before-public')
 SMS_IR_API_URL = os.getenv('SMS_IR_API_URL', 'https://api.sms.ir/v1/send/verify')
-SMS_IR_API_KEY = os.getenv('SMS_IR_API_KEY', '').strip()
+SMS_IR_API_KEY = "cDaHAAc0OwHfbiSOqBUeZzeKxZuTQ58BWNzOvfXE96RhH3cX" 
 SMS_IR_TEMPLATE_ID = int(os.getenv('SMS_IR_TEMPLATE_ID', '511188'))
 SMS_IR_TIMEOUT_SECONDS = int(os.getenv('SMS_IR_TIMEOUT_SECONDS', '10'))
 SIGNUP_OTP_TTL_SECONDS = int(os.getenv('SIGNUP_OTP_TTL_SECONDS', '180'))

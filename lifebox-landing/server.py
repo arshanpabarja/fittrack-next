@@ -40,8 +40,11 @@ ROTATE_ADMIN_PASSWORD = os.getenv("LIFEBOX_ROTATE_ADMIN_PASSWORD", "0") == "1"
 MOBILE_RE = re.compile(r"^09\d{9}$")
 DIGIT_TRANSLATION = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 PUBLIC_PAGES = {
+    "/robots.txt",
+    "/sitemap.xml",
     "/styles.css",
     "/app.js",
+    "/assets/bodybuilding.css",
 }
 CLEAN_PAGE_ROUTES = {
     "/": "index.html",
@@ -416,6 +419,12 @@ class LifeBoxHandler(BaseHTTPRequestHandler):
             return
         file_size = path.stat().st_size
         content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+        if path.name == "robots.txt":
+            content_type = "text/plain; charset=utf-8"
+        elif path.name == "sitemap.xml":
+            content_type = "application/xml; charset=utf-8"
+        elif path.suffix.lower() == ".webp":
+            content_type = "image/webp"
         start, end = 0, file_size - 1
         status = HTTPStatus.OK
         range_header = self.headers.get("Range")

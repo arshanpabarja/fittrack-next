@@ -5,6 +5,8 @@ from . import views, owner, sync
 
 
 urlpatterns = [
+    path('robots.txt', views.public_file, {'name': 'robots.txt', 'content_type': 'text/plain; charset=utf-8'}),
+    path('sitemap.xml', views.public_file, {'name': 'sitemap.xml', 'content_type': 'application/xml; charset=utf-8'}),
     path('api/desktop/sync', sync.sync_api),
     path('api/owner/members', owner.members),
     path('api/owner/members/<str:source>/<int:member_id>', owner.member),

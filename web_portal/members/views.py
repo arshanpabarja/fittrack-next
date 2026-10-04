@@ -18,7 +18,7 @@ from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
 
 from .models import CoachProfile, LegacyMember, MembershipApplication, Plan, SignupOTP, User, WorkoutProgram, LoginEvent, OwnerAudit
 
@@ -207,16 +207,18 @@ def _safe_public_path(relative):
     return candidate
 
 
-@require_GET
-def public_file(request, name):
-    response = FileResponse(_safe_public_path(name).open("rb"))
+@require_safe
+def public_file(request, name, content_type=None):
+    response = FileResponse(_safe_public_path(name).open("rb"), content_type=content_type)
     response["Cache-Control"] = "no-cache"
     return response
 
 
-@require_GET
+@require_safe
 def asset_file(request, name):
-    response = FileResponse(_safe_public_path(Path("assets") / name).open("rb"))
+    path = _safe_public_path(Path("assets") / name)
+    content_type = "image/webp" if path.suffix.lower() == ".webp" else None
+    response = FileResponse(path.open("rb"), content_type=content_type)
     response["Cache-Control"] = "public, max-age=86400"
     return response
 
