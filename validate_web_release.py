@@ -43,7 +43,7 @@ for path in ('/owner.js', '/owner.css', '/assets/icons/users.svg', '/assets/Vazi
     response = anonymous.get(path, secure=True, **host)
     assert response.status_code == 200, path
     response.close()
-User.objects.create_user(mobile='09120000001', password='ReleaseTestOnly482!', role='admin', status='active')
+User.objects.create_superuser(mobile='09120000001', password='ReleaseTestOnly482!')
 payload = json.dumps({'mobile': '09120000001', 'password': 'ReleaseTestOnly482!'})
 assert anonymous.post('/api/login', data=payload, content_type='application/json', secure=True, **host).status_code == 403
 csrf = anonymous.cookies['csrftoken'].value
@@ -52,7 +52,7 @@ response = anonymous.post('/api/login', data=payload, content_type='application/
 assert response.status_code == 200, response.status_code
 assert response.cookies['sessionid']['secure']
 assert response.cookies['sessionid']['httponly']
-panel = anonymous.get('/admin', secure=True, **host)
+panel = anonymous.get('/owner', secure=True, **host)
 assert panel.status_code == 200
 assert panel['Cache-Control'] == 'no-store'
 assert panel['X-Frame-Options'] == 'DENY'
@@ -63,7 +63,14 @@ for path in ('/api/owner/members', '/api/owner/plans', '/api/owner/activity', '/
     assert response['Cache-Control'] == 'no-store'
     assert response.json()['ok'] is True
 assert anonymous.get('/admin', secure=True, HTTP_HOST='untrusted.example').status_code == 400
-print('Production smoke passed: HTTPS, proxy, cookies, CSRF, owner access, APIs, assets, shared calendar')
+limited = User.objects.create_user(mobile='09120000002', password='LimitedTestOnly482!', role='admin', status='active')
+anonymous.force_login(limited)
+assert anonymous.get('/admin', secure=True, **host).status_code == 200
+assert anonymous.get('/owner', secure=True, **host).status_code == 302
+insights = anonymous.get('/api/owner/overview', secure=True, **host).json()
+assert 'monthPayments' not in insights['metrics']
+assert all('payments' not in point for point in insights['series'])
+print('Production smoke passed: HTTPS, proxy, cookies, CSRF, owner/admin separation, APIs, assets, shared calendar')
 '''
 
 

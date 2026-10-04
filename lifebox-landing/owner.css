@@ -695,6 +695,18 @@
   gap:20px;
 }
 
+.admin-panel .recent-panel {
+  grid-column:1 / -1;
+  grid-row:2;
+}
+
+@media(max-width:960px) {
+  .admin-panel .followup-panel,
+  .admin-panel .recent-panel {
+    grid-row:auto;
+  }
+}
+
 .owner-panel {
   background:var(--surface);
   border:1px solid var(--border);

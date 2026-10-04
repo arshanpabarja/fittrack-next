@@ -30,14 +30,14 @@ This runserver launcher is for local development, not a public production deploy
 
 ## Operations dashboard
 
-The owner panel at `/admin` now has focused views for the dashboard, members,
+The owner panel at `/owner` has focused views for the dashboard, members,
 plans, attendance, recorded renewal payments, and the management audit log.
 The existing Persian interface, yellow LifeBox identity, URLs, forms,
 Django sessions, CSRF protection, and reception workflows are preserved.
 Light and dark themes follow the system initially; a saved manual toggle is available.
 On phones, navigation moves into a keyboard-accessible drawer.
 
-`GET /api/owner/overview` is owner-only, read-only, and marked `no-store`.
+`GET /api/owner/overview` is read-only and marked `no-store`; financial totals are owner-only.
 It powers active memberships, memberships expiring within seven days, expired
 or exhausted memberships, debts, daily attendance, and recorded renewal payments.
 Membership validity uses the reception application's one-Jalali-month calendar
@@ -61,6 +61,33 @@ terminal charge. Renewals, initial enrollment, and check-in remain in reception.
 
 The remaining brief requires additional domain support: a complete transaction
 ledger and receipts, configurable membership durations/freezes, classes and capacity,
-member notes and assessments, communication providers, and granular staff permissions.
+member notes and assessments, communication providers, and additional staff permission groups.
 Coach and workout management continues through the existing Django admin links.
 These are not presented as implemented features in the owner interface.
+
+## Limited administrator
+
+The separate `/admin` panel is for active accounts with role `admin`. Owner accounts
+use role `owner`; superusers retain owner access. Migration `0010_owner_role` moves
+existing superusers to `owner` without changing their password or member data.
+An owner opening the old `/admin` bookmark is redirected to `/owner`.
+
+| Operation | Owner | Administrator |
+| --- | --- | --- |
+| Member details, debt, follow-up and attendance | Yes | Yes |
+| Edit member identity/address/debt or suspend member web account | Yes | Yes |
+| View individual renewal payments and export their rows | Yes | Yes |
+| Payment totals, payment chart, cumulative member payment field | Yes | No |
+| Add/edit catalog plans or change a member's plan/payment field | Yes | No |
+| Django admin, roles and protected manager accounts | Yes | No |
+
+`/api/admin/*` and the older `/api/owner/*` routes apply the same role policy.
+Administrator responses omit financial totals and payment time series, and member
+rows omit the cumulative payment field. Forbidden writes return HTTP 403 before
+creating a command or modifying any row. Plan prices can be read individually.
+The Django admin site is owner-only even if an administrator has `is_staff` or
+model permissions, so it cannot bypass the panel's restrictions.
+
+To provision an administrator, use the owner's Django user-management page, select
+the `admin` role and active status, and leave superuser/staff access unchecked.
+No administrator account or password is automatically created during deployment.

@@ -156,6 +156,7 @@ function initMobileNavigation() {
 }
 
 function accountDestination(user) {
+  if (user.role === "owner") return "/owner";
   if (user.role === "admin") return "/admin";
   if (user.role === "coach") return "/coach-panel";
   return user.status === "pending" ? "/pending" : "/dashboard";
@@ -734,7 +735,7 @@ function statusLabel(status) {
 }
 
 function roleLabel(role) {
-  return { admin: "مدیر", staff: "پذیرش", coach: "مربی", member: "عضو" }[role] || role;
+  return { owner: "مالک", admin: "ادمین", staff: "پذیرش", coach: "مربی", member: "عضو" }[role] || role;
 }
 
 function renderUsers(users) {
@@ -751,7 +752,7 @@ function renderUsers(users) {
       <td>${escapeHtml(user.plan)}</td>
       <td>${formatDate(user.joinedAt)}</td>
       <td><span class="status-text ${user.status === "active" ? "active" : "inactive"}"><i></i>${statusLabel(user.status)}</span></td>
-      <td>${user.role === "admin" || !user.webLinked ? "—" : `<button class="table-action" type="button" data-status-user="${user.id}" data-next-status="${user.status === "active" ? "suspended" : "active"}">${user.status === "active" ? "تعلیق حساب" : "فعال‌کردن"}</button>`}</td>
+      <td>${["owner", "admin"].includes(user.role) || !user.webLinked ? "—" : `<button class="table-action" type="button" data-status-user="${user.id}" data-next-status="${user.status === "active" ? "suspended" : "active"}">${user.status === "active" ? "تعلیق حساب" : "فعال‌کردن"}</button>`}</td>
     `;
     body.appendChild(row);
   });

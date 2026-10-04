@@ -16,14 +16,15 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import GymRemoteCommand, LegacyMember, LoginEvent, MembershipApplication, OwnerAudit, Plan, User
+from .permissions import is_owner, protected_account
 from .views import _is_admin, _desktop_plan_payload, _desktop_plan_values, body_json, error, normalize_digits, MOBILE_RE, NATIONAL_ID_RE
 
 
-def owner_only(view):
+def management_only(view):
     @wraps(view)
     def wrapped(request, *args, **kwargs):
         if not _is_admin(request.user):
-            return error("دسترسی فقط برای مدیر باشگاه مجاز است.", 403)
+            return error("دسترسی فقط برای مالک یا ادمین فعال باشگاه مجاز است.", 403)
         response = view(request, *args, **kwargs)
         response['Cache-Control'] = 'no-store'
         return response
@@ -84,10 +85,14 @@ def member_rows():
     return rows
 
 
-@owner_only
+@management_only
 @require_http_methods(['GET'])
 def members(request):
     rows = member_rows()
+    if not is_owner(request.user):
+        rows = [row for row in rows if row['role'] not in {User.Role.ADMIN, User.Role.OWNER}]
+        for row in rows:
+            row.pop('payment', None)
     search = request.GET.get('search', '').strip().casefold()[:100]
     if search:
         rows = [r for r in rows if search in (r['firstName']+' '+r['lastName']).casefold()
@@ -95,24 +100,26 @@ def members(request):
     return JsonResponse({'ok': True, 'members': rows, 'remoteSync': settings.FITTRACK_REMOTE_SYNC})
 
 
-@owner_only
+@management_only
 @require_http_methods(['GET'])
 def overview(request):
     from .insights import build_overview
-    return JsonResponse(build_overview(member_rows()))
+    return JsonResponse(build_overview(member_rows(), include_financial_totals=is_owner(request.user)))
 
 
-@owner_only
+@management_only
 @require_http_methods(['PATCH'])
 def member(request, source, member_id):
     payload = body_json(request)
     if payload is None:
         return error('اطلاعات معتبر نیست.')
+    if not is_owner(request.user) and set(payload) - {'firstName', 'lastName', 'mobile', 'nationalId', 'address', 'debt'}:
+        return error('ادمین فقط مشخصات عضو و بدهی را می‌تواند ویرایش کند؛ تغییر پلن و پرداخت مجاز نیست.', 403)
     user = User.objects.filter(pk=member_id).first() if source == 'web' else None
     gym = LegacyMember.objects.filter(pk=member_id).first() if source == 'gym' else None
     if source not in {'web', 'gym'} or (not user and not gym):
         return error('عضو پیدا نشد.', 404)
-    if user and user.role == User.Role.ADMIN:
+    if user and protected_account(user):
         return error('حساب مدیر از این فرم قابل تغییر نیست.', 403)
     if user:
         application = getattr(user, 'membership_application', None)
@@ -120,7 +127,7 @@ def member(request, source, member_id):
         gym = gym or LegacyMember.objects.filter(mobile=user.mobile).first()
     elif gym:
         user = User.objects.filter(Q(membership_application__legacy_member_id=gym.id) | Q(mobile=gym.mobile)).first()
-    if user and user.role == User.Role.ADMIN:
+    if user and protected_account(user):
         return error('حساب مدیر از این فرم قابل تغییر نیست.', 403)
     values = {}
     for api_key, key, limit in [('firstName', 'first_name', 150), ('lastName', 'last_name', 150), ('mobile', 'mobile', 11), ('nationalId', 'national_id', 10), ('address', 'address', 2000)]:
@@ -190,7 +197,7 @@ def attendance_connection():
     return sqlite3.connect(settings.FITTRACK_ATTENDANCE_PATH.resolve().as_uri() + '?mode=ro', uri=True, timeout=5)
 
 
-@owner_only
+@management_only
 @require_http_methods(['GET'])
 def activity(request):
     period = request.GET.get('period', 'today')
@@ -254,9 +261,11 @@ def write_plan_catalog(plan, old_name=None):
         tmp.unlink(missing_ok=True)
 
 
-@owner_only
+@management_only
 @require_http_methods(['GET', 'POST', 'PATCH'])
 def plans(request, plan_id=None):
+    if request.method != 'GET' and not is_owner(request.user):
+        return error('تغییر پلن فقط برای مالک باشگاه مجاز است.', 403)
     if request.method == 'GET':
         rows = {p.id: _desktop_plan_payload(p) for p in Plan.objects.all()}
         for command in GymRemoteCommand.objects.filter(kind='plan', status=GymRemoteCommand.Status.PENDING).order_by('id'):

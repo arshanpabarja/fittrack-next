@@ -18,7 +18,7 @@ class UserManager(BaseUserManager):
     def create_superuser(self, mobile, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
-        extra_fields.setdefault("role", User.Role.ADMIN)
+        extra_fields.setdefault("role", User.Role.OWNER)
         extra_fields.setdefault("status", User.Status.ACTIVE)
         return self.create_user(mobile, password, **extra_fields)
 
@@ -28,7 +28,8 @@ class User(AbstractUser):
         MEMBER = "member", "عضو"
         COACH = "coach", "مربی"
         STAFF = "staff", "پذیرش"
-        ADMIN = "admin", "مدیر"
+        ADMIN = "admin", "ادمین"
+        OWNER = "owner", "مالک"
 
     class Status(models.TextChoices):
         PENDING = "pending", "در انتظار مراجعه"

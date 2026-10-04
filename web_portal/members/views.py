@@ -21,6 +21,7 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
 
 from .models import CoachProfile, LegacyMember, MembershipApplication, Plan, SignupOTP, User, WorkoutProgram, LoginEvent, OwnerAudit
+from .permissions import is_manager as _is_admin, is_owner as _is_owner, protected_account
 
 
 PUBLIC_ROOT = settings.BASE_DIR.parent / "lifebox-landing"
@@ -35,6 +36,7 @@ PUBLIC_PAGES = {
     "pending.html",
     "dashboard.html",
     "admin.html",
+    "admin-panel.html",
     "coach-panel.html",
 }
 DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
@@ -154,7 +156,7 @@ def public_user(user):
         "mobile": user.mobile,
         "nationalId": user.national_id,
         "address": user.address,
-        "role": user.role,
+        "role": User.Role.OWNER if user.is_superuser else user.role,
         "status": user.status,
         "plan": plan_name,
         "sessionsUsed": legacy.used_sessions if legacy else 0,
@@ -187,8 +189,12 @@ def reconcile_pending_user(user):
 
 @ensure_csrf_cookie
 def page(request, name):
-    if name == 'admin.html' and not _is_admin(request.user):
+    if name == 'admin.html' and not _is_owner(request.user):
+        return redirect('/admin' if _is_admin(request.user) else '/login')
+    if name == 'admin-panel.html' and not _is_admin(request.user):
         return redirect('/login')
+    if name == 'admin-panel.html' and _is_owner(request.user):
+        return redirect('/owner')
     if name not in PUBLIC_PAGES or not (PUBLIC_ROOT / name).is_file():
         raise Http404
     response = render(request, name)
@@ -403,10 +409,6 @@ def me_api(request):
     return JsonResponse({"ok": True, "user": public_user(request.user)})
 
 
-def _is_admin(user):
-    return user.is_authenticated and user.is_active and user.status == User.Status.ACTIVE and (user.is_superuser or user.role == User.Role.ADMIN)
-
-
 def _is_coach(user):
     return user.is_authenticated and user.role == User.Role.COACH and user.status == User.Status.ACTIVE
 
@@ -449,7 +451,7 @@ def admin_user_status_api(request, user_id):
     user = User.objects.filter(pk=user_id).first()
     if not user:
         return error("کاربر پیدا نشد.", status=404)
-    if user.pk == request.user.pk or user.role == User.Role.ADMIN:
+    if user.pk == request.user.pk or protected_account(user):
         return error("نمی‌توانید حساب خودتان را تعلیق کنید.")
     user.status = status
     user.save(update_fields=["status"])

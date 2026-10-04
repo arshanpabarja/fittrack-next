@@ -25,7 +25,7 @@ class Command(BaseCommand):
         catalog = {} if settings.FITTRACK_REMOTE_SYNC else json.loads(settings.FITTRACK_PLANS_PATH.read_text(encoding='utf-8-sig'))
         with transaction.atomic():
             user, _ = User.objects.get_or_create(mobile=mobile)
-            user.role = User.Role.ADMIN
+            user.role = User.Role.OWNER
             user.status = User.Status.ACTIVE
             user.is_active = user.is_staff = user.is_superuser = True
             user.first_name = user.first_name or 'مدیر'

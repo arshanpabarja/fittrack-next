@@ -1,5 +1,7 @@
 /* Owner UI uses existing Django sessions/CSRF and read-only operational insights. */
 (() => {
+  const isOwnerPanel = document.body.dataset.panelRole === 'owner';
+  const apiRoot = isOwnerPanel ? '/api/owner' : '/api/admin';
   let remoteSync = false, members = [], plans = [], overview = null;
   let editingMember, editingPlan, refreshing = false, memberPage = 1;
   let memberFilter = 'all', followupFilter = 'expiring';
@@ -23,6 +25,7 @@
     payments:['پرداخت‌های تمدید','وضعیت پرداخت‌ها','سوابق تمدید عضویت و بدهی اعضا.'],
     audit:['تغییرات اخیر','تاریخچه مدیریت','آخرین اقدامات ثبت‌شده در پنل باشگاه.']
   };
+  if(!isOwnerPanel) views.overview[2]='حضور امروز، بدهی‌ها، تمدیدها و اعضای نیازمند پیگیری.';
   function matches(m, filter) {
     if (m.role !== 'member') return false;
     switch (filter) {
@@ -68,6 +71,7 @@
     </tr>`).join('') || empty(7,'عضوی با این فیلتر پیدا نشد. فیلتر یا جست‌وجو را تغییر دهید.');
   }
   function renderPlans() {
+    if (!isOwnerPanel) return;
     $('#owner-plans').innerHTML = plans.map(p => `<article class="owner-plan ${p.isActive ? '' : 'inactive'}"><span class="status-badge ${p.isActive ? 'active' : ''}">${p.isActive ? 'فعال' : 'غیرفعال'} · ${{all:'همه',male:'آقایان',female:'بانوان'}[p.gender] || ''}</span><h3>${html(p.name)}</h3><strong>${number(p.price)} <small>تومان</small></strong><p>${number(p.sessionsPerMonth)} جلسه در ماه</p>${p.remotePending ? '<small>در انتظار اعمال در باشگاه</small>' : `<button class="table-action" data-edit-plan="${p.id}">ویرایش پلن</button>`}</article>`).join('') || '<p class="empty-state">هنوز پلنی ثبت نشده است. اولین پلن را اضافه کنید.</p>';
   }
   function renderFollowups() {
@@ -85,10 +89,11 @@
   }
   function renderOverview() {
     const m = overview.metrics;
-    const value = (id,v) => { $(id).textContent = number(v); };
+    const value = (id,v) => { const target=$(id); if(target) target.textContent = number(v); };
     value('#metric-active',m.active+m.expiring); value('#metric-members',m.total); value('#nav-members',m.total);
     value('#metric-expiring',m.expiring); value('#metric-revenue',m.monthPayments); value('#metric-today-revenue',m.todayPayments);
     value('#metric-visits',m.todayAttendance); value('#metric-inside',m.inside);
+    value('#metric-debt-members',m.debtMembers);
     value('#attendance-today',m.todayAttendance);
     $('#attendance-inside').textContent = m.inside == null ? 'اطلاعات در دسترس نیست' : `${number(m.inside)} نفر در باشگاه`;
     value('#payment-today',m.todayPayments); value('#payment-month',m.monthPayments); value('#payment-debt',m.debt);
@@ -120,12 +125,12 @@
     $('#owner-content').setAttribute('aria-busy','true');
     try {
       const period = $('#activity-period').value;
-      const [directory,catalog,activity,insights] = await Promise.all([api('/api/owner/members'),api('/api/owner/plans'),api(`/api/owner/activity?period=${period}`),api('/api/owner/overview')]);
+      const [directory,catalog,activity,insights] = await Promise.all([api(`${apiRoot}/members`),isOwnerPanel ? api(`${apiRoot}/plans`) : Promise.resolve({plans:[]}),api(`${apiRoot}/activity?period=${period}`),api(`${apiRoot}/overview`)]);
       remoteSync = Boolean(directory.remoteSync); overview = insights;
       const details = new Map(insights.members.map(m => [m.key,m]));
       members = directory.members.map(m => ({...m,...details.get(m.key)}));
       plans = catalog.plans;
-      $('#new-plan').disabled = false;
+      if(isOwnerPanel) $('#new-plan').disabled = false;
       renderMembers(); renderPlans(); renderActivity(activity); renderOverview();
       feedback(`آخرین دریافت: ${clock(new Date().toISOString())} · هر ۳۰ ثانیه${activity.syncedAt ? ` · آخرین همگام‌سازی باشگاه: ${formatDate(activity.syncedAt)} ${clock(activity.syncedAt)}` : ''}`);
       if (!overview.attendanceAvailable || !overview.paymentsAvailable) feedback('بعضی سوابق باشگاه در دسترس نیست؛ علامت — یعنی داده دریافت نشده است.');
@@ -143,7 +148,7 @@
     return {ctx,width,height,muted:style.getPropertyValue('--muted'),border:style.getPropertyValue('--border'),accent:style.getPropertyValue('--accent'),surface:style.getPropertyValue('--surface')};
   }
   function drawRevenue() {
-    if (!overview) return;
+    if (!overview || !isOwnerPanel) return;
     const days = Number($('#chart-period').value);
     const series = overview.series.slice(-days), values = series.map(d => d.payments || 0);
     const total = values.reduce((a,b) => a+b,0);
@@ -189,12 +194,12 @@
   function drawCharts(){drawRevenue();drawAttendance();}
   function navigate() {
     const key = window.location.hash.slice(1) || 'overview';
-    const selected = views[key] ? key : 'overview';
+    const selected = views[key] && (isOwnerPanel || key !== 'plans') ? key : 'overview';
     $$('[data-view]').forEach(section=>section.hidden=section.id!==selected);
     $$('.side-nav a[href^="#"]').forEach(a=>{const active=a.getAttribute('href')===`#${selected}`;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
     const [label,title,description]=views[selected];
     $('#view-label').textContent=label;$('#view-title').textContent=title;$('#view-description').textContent=description;
-    document.title=`${label} | مدیریت لایف‌باکس`;
+    document.title=`${label} | ${isOwnerPanel ? 'پنل مالک' : 'پنل ادمین'} لایف‌باکس`;
     setMenu(false);drawCharts();
   }
   function setMenu(open,returnFocus=false) {
@@ -212,9 +217,9 @@
   function openMember(key) {
     editingMember=members.find(m=>m.key===key);if(!editingMember || editingMember.remotePending)return;
     const form=$('#member-form');
-    ['firstName','lastName','mobile','nationalId','address','debt','payment'].forEach(k=>form.elements[k].value=editingMember[k]??'');
-    ['debt','payment'].forEach(k=>form.elements[k].disabled=!editingMember.gymId);
-    form.elements.planId.innerHTML='<option value="">بدون تغییر پلن</option>'+plans.filter(p=>p.isActive).map(p=>`<option value="${p.id}">${html(p.name)}</option>`).join('');
+    ['firstName','lastName','mobile','nationalId','address','debt','payment'].forEach(k=>{if(form.elements[k])form.elements[k].value=editingMember[k]??'';});
+    ['debt','payment'].forEach(k=>{if(form.elements[k])form.elements[k].disabled=!editingMember.gymId;});
+    if(form.elements.planId)form.elements.planId.innerHTML='<option value="">بدون تغییر پلن</option>'+plans.filter(p=>p.isActive).map(p=>`<option value="${p.id}">${html(p.name)}</option>`).join('');
     $('#member-title').textContent=fullName(editingMember);
     let summary=$('#member-summary');
     if(!summary){summary=document.createElement('p');summary.id='member-summary';summary.className='admin-note';$('#member-title').after(summary);}
@@ -222,6 +227,7 @@
     $('.form-result',form).textContent='';$('#member-dialog').showModal();
   }
   function openPlan(id) {
+    if(!isOwnerPanel)return;
     editingPlan=plans.find(p=>p.id===Number(id));
     const form=$('#plan-form'),data=editingPlan || {name:'',price:0,sessionsPerMonth:12,gender:'all',isActive:true};
     Object.keys(data).forEach(k=>{if(form.elements[k])form.elements[k].value=String(data[k]);});
@@ -232,7 +238,7 @@
     try {
       let result;
       if(kind==='plan'){payload.price=Number(payload.price);payload.sessionsPerMonth=Number(payload.sessionsPerMonth);payload.isActive=payload.isActive==='true';result=await api(`/api/owner/plans${editingPlan?'/'+editingPlan.id:''}`,{method:editingPlan?'PATCH':'POST',body:JSON.stringify(payload)});}
-      else result=await api(`/api/owner/members/${editingMember.key.replace(':','/')}`,{method:'PATCH',body:JSON.stringify(payload)});
+      else result=await api(`${apiRoot}/members/${editingMember.key.replace(':','/')}`,{method:'PATCH',body:JSON.stringify(payload)});
       form.closest('dialog').close();await refresh();feedback(result.queued?'تغییر ذخیره شد؛ پس از اتصال پذیرش اعمال می‌شود.':'تغییرات با موفقیت ذخیره شد.');
     } catch(e){$('.form-result',form).textContent=e.message;}
     finally{button.disabled=false;}
@@ -247,14 +253,14 @@
     applyTheme(storedTheme || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
     $('#owner-date').textContent=new Intl.DateTimeFormat('fa-IR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Tehran'}).format(new Date());
     navigate();
-    const user=await protectPage('admin');if(!user)return;
+    const user=await protectPage(isOwnerPanel ? 'owner' : 'admin');if(!user)return;
     $('#owner-name').textContent=user.fullName;$('#owner-initial').textContent=user.fullName?.[0] || 'م';$('[data-owner]').classList.add('is-ready');
     $('#owner-search').addEventListener('input',()=>{memberPage=1;renderMembers();});
     $('#previous-members').addEventListener('click',()=>{memberPage--;renderMembers();});
     $('#next-members').addEventListener('click',()=>{memberPage++;renderMembers();});
     $('#refresh-owner').addEventListener('click',refresh);$('#activity-period').addEventListener('change',refresh);
-    $('#chart-period').addEventListener('change',drawRevenue);$('#new-plan').addEventListener('click',()=>openPlan());
-    $('#member-form').addEventListener('submit',e=>submit(e,'member'));$('#plan-form').addEventListener('submit',e=>submit(e,'plan'));
+    $('#chart-period')?.addEventListener('change',drawRevenue);$('#new-plan')?.addEventListener('click',()=>openPlan());
+    $('#member-form').addEventListener('submit',e=>submit(e,'member'));$('#plan-form')?.addEventListener('submit',e=>submit(e,'plan'));
     $$('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
     $$('[data-member-filter]').forEach(b=>b.addEventListener('click',()=>setFilter(b.dataset.memberFilter)));
     $$('[data-followup]').forEach(b=>b.addEventListener('click',()=>{followupFilter=b.dataset.followup;$$('[data-followup]').forEach(t=>{const active=t===b;t.classList.toggle('active',active);t.setAttribute('aria-pressed',String(active));});renderFollowups();}));
@@ -276,7 +282,7 @@
       if(e.key==='Tab'){const controls=$$('a,button', $('#owner-sidebar'));if(e.shiftKey && document.activeElement===controls[0]){e.preventDefault();controls.at(-1).focus();}else if(!e.shiftKey && document.activeElement===controls.at(-1)){e.preventDefault();controls[0].focus();}}
     });
     const resizeObserver=new ResizeObserver(()=>{if(window.innerWidth>760 && $('#owner-sidebar').classList.contains('is-open'))setMenu(false);drawCharts();});resizeObserver.observe($('#owner-content'));
-    $('#export-members').addEventListener('click',()=>exportCsv([['نام','نام خانوادگی','موبایل','پلن','وضعیت عضویت','بدهی','پرداخت'],...visibleMembers().map(m=>[m.firstName,m.lastName,m.mobile,m.plan,labels[m.membershipStatus],m.debt,m.payment])],'lifebox-members.csv'));
+    $('#export-members').addEventListener('click',()=>exportCsv([['نام','نام خانوادگی','موبایل','پلن','وضعیت عضویت','بدهی',...(isOwnerPanel ? ['پرداخت'] : [])],...visibleMembers().map(m=>[m.firstName,m.lastName,m.mobile,m.plan,labels[m.membershipStatus],m.debt,...(isOwnerPanel ? [m.payment] : [])])],'lifebox-members.csv'));
     $('#export-payments').addEventListener('click',()=>exportCsv([['عضو','پلن','مبلغ','تاریخ','مرجع پرداخت'],...overview.payments.map(p=>[p.name,p.plan,p.amount,p.at,p.reference])],'lifebox-renewal-payments.csv'));
     await document.fonts.ready;await refresh();
     setInterval(()=>{if(!document.hidden && !$('dialog[open]'))refresh();},30000);

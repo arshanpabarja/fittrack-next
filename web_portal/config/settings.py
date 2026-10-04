@@ -40,7 +40,7 @@ CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUS
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'members.admin_site.OwnerAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

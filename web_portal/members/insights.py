@@ -47,7 +47,7 @@ def records(kind):
         return [], False
 
 
-def build_overview(directory):
+def build_overview(directory, *, include_financial_totals=True):
     today = timezone.localdate()
     now = datetime.combine(today, timezone.localtime().time())
     month_start = today.replace(day=1)
@@ -120,16 +120,18 @@ def build_overview(directory):
         except (ValueError, KeyError, TypeError):
             continue
         amount = max(0, int(renewal.get('paid_amount') or 0))
-        payment_daily[at.date().isoformat()] += amount
+        if include_financial_totals:
+            payment_daily[at.date().isoformat()] += amount
         member = names.get(renewal.get('member_id'), {})
         payments.append(dict(memberKey=member.get('key'), name=(member.get('firstName', '')+' '+member.get('lastName', '')).strip() or 'عضو پیشین',
                              amount=amount, plan=renewal.get('new_plan', ''), reference=renewal.get('payment_reference', ''), at=at.isoformat()))
-    metrics['todayPayments'] = payment_daily[today.isoformat()] if payments_available else None
-    metrics['monthPayments'] = sum(amount for day, amount in payment_daily.items() if month_start.isoformat() <= day <= today.isoformat()) if payments_available else None
+    if include_financial_totals:
+        metrics['todayPayments'] = payment_daily[today.isoformat()] if payments_available else None
+        metrics['monthPayments'] = sum(amount for day, amount in payment_daily.items() if month_start.isoformat() <= day <= today.isoformat()) if payments_available else None
     chart_start = today - timedelta(days=29)
     days = [chart_start + timedelta(days=i) for i in range(30)]
     return dict(ok=True, metrics=metrics, members=details, payments=sorted(payments, key=lambda p: p['at'], reverse=True)[:500],
-                series=[dict(date=day.isoformat(), payments=payment_daily[day.isoformat()] if payments_available else None,
+                series=[dict(date=day.isoformat(), **({'payments': payment_daily[day.isoformat()] if payments_available else None} if include_financial_totals else {}),
                              attendance=attendance_daily[day.isoformat()] if attendance_available else None) for day in days],
                 hours=[dict(hour=hour, count=hours[hour]) for hour in range(6, 24)],
                 attendanceAvailable=attendance_available, paymentsAvailable=payments_available,
