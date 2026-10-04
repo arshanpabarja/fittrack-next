@@ -1,0 +1,19 @@
+[Unit]
+Description=LifeBox Django web panel
+After=network.target
+
+[Service]
+# Match the actual service user and database ownership on your VPS.
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/lifebox/web_portal
+EnvironmentFile=/etc/lifebox/web.env
+ExecStart=/var/www/venv/bin/gunicorn --config /var/www/lifebox/deploy/gunicorn.conf.py config.wsgi:application
+Restart=on-failure
+RestartSec=5
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

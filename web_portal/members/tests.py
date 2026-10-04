@@ -41,7 +41,8 @@ class PublicSitePageTests(TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         content = response.content.decode("utf-8")
-        self.assertIn("بدنسازی نیمه‌خصوصی و خصوصی", content)
+        self.assertIn("بدنسازی خصوصی و نیمه‌خصوصی", content)
+        self.assertIn('href="/bodybuilding"', content)
         self.assertIn("کلیستنیکس", content)
         self.assertIn("data-account-cta", content)
 

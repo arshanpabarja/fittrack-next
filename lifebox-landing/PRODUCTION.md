@@ -1,5 +1,14 @@
 # LifeBox Django production checklist
 
+For the current owner panel, build `dist/lifebox-web.zip` with
+`build_web_release.py`, validate it with `validate_web_release.py`, and follow
+`deploy/README.md`. The release includes the required shared membership modules
+under `app/domain`, plus web-only dependencies and Gunicorn/Nginx examples.
+`DJANGO_DEBUG=0` enables secure cookies, HTTPS redirect and a one-hour HSTS policy;
+startup refuses missing/default production secrets or missing explicit paths.
+The former SMS key has been removed from source and must be rotated in SMS.ir,
+then provided through the service environment as `SMS_IR_API_KEY`.
+
 ## Public search metadata
 
 The public pages use `https://lifeboxgym.com` as their canonical origin. If the

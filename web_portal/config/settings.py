@@ -33,7 +33,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-lifebox-change-before-publ
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,lifeboxgym.com,https://lifeboxgym.com").split(",") if host.strip()]
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,lifeboxgym.com").split(",") if host.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "http://192.168.100.95:8000,https://lifeboxgym.com").split(",") if origin.strip()]
 
 
@@ -126,12 +126,23 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR.parent / 'lifebox-landing']
+# Site assets have explicit Django/Nginx routes. Only collect Django admin assets;
+# collecting the whole landing directory would also publish HTML and server code.
+STATICFILES_DIRS = []
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 AUTH_USER_MODEL = 'members.User'
 LOGIN_URL = '/login'
 SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = not DEBUG
+# Start with one hour; increase after HTTPS has been verified on the server.
+SECURE_HSTS_SECONDS = 0 if DEBUG else int(os.getenv('DJANGO_SECURE_HSTS_SECONDS', '3600'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+# Enable only behind a private proxy that overwrites this header (see deploy/nginx.conf.example).
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if os.getenv('DJANGO_TRUST_PROXY_SSL', '0') == '1' else None
 SESSION_COOKIE_SAMESITE = 'Strict'
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
@@ -141,7 +152,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 FITTRACK_DESKTOP_API_TOKEN = os.getenv('FITTRACK_DESKTOP_API_TOKEN', 'dev-fittrack-desktop-token-change-before-public')
 SMS_IR_API_URL = os.getenv('SMS_IR_API_URL', 'https://api.sms.ir/v1/send/verify')
-SMS_IR_API_KEY = "cDaHAAc0OwHfbiSOqBUeZzeKxZuTQ58BWNzOvfXE96RhH3cX" 
+SMS_IR_API_KEY = os.getenv('SMS_IR_API_KEY', '').strip()
 SMS_IR_TEMPLATE_ID = int(os.getenv('SMS_IR_TEMPLATE_ID', '511188'))
 SMS_IR_TIMEOUT_SECONDS = int(os.getenv('SMS_IR_TIMEOUT_SECONDS', '10'))
 SIGNUP_OTP_TTL_SECONDS = int(os.getenv('SIGNUP_OTP_TTL_SECONDS', '180'))
@@ -164,3 +175,7 @@ FITTRACK_PLANS_PATH = Path(os.getenv("FITTRACK_PLANS_PATH", str(FITTRACK_DB_PATH
 FITTRACK_ATTENDANCE_PATH = Path(os.getenv("FITTRACK_ATTENDANCE_PATH", str(BASE_DIR.parent / "state" / "fittrack_next.db")))
 FITTRACK_REMOTE_SYNC = os.getenv('FITTRACK_REMOTE_SYNC', '0') == '1'
 FITTRACK_SYNC_SOURCE = os.getenv('FITTRACK_SYNC_SOURCE', '').strip()
+
+if not DEBUG:
+    from .deployment import validate_production
+    validate_production(os.environ)
