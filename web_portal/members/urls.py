@@ -1,7 +1,7 @@
 from django.urls import path, re_path
 from django.views.generic import RedirectView
 
-from . import views, owner, sync
+from . import views, owner, sync, coaching
 
 
 urlpatterns = [
@@ -24,6 +24,8 @@ urlpatterns = [
     path('api/owner/plans/<int:plan_id>', owner.plans),
     path('owner.js', views.public_file, {'name': 'owner.js'}),
     path('owner.css', views.public_file, {'name': 'owner.css'}),
+    path('coach.css', views.public_file, {'name': 'coach.css'}),
+    path('coach.js', views.public_file, {'name': 'coach.js'}),
     path("", views.page, {"name": "index.html"}),
     path("coaches", views.page, {"name": "coaches.html"}),
     path("bodybuilding", views.page, {"name": "bodybuilding.html"}),
@@ -61,6 +63,16 @@ urlpatterns = [
     path("api/admin/users", views.admin_users_api),
     path("api/admin/users/<int:user_id>/status", views.admin_user_status_api),
     path("api/coach/profile", views.coach_profile_api),
+    path('api/coach/workspace', coaching.workspace),
+    path('api/coach/clients/<int:member_id>', coaching.client_detail),
+    path('api/coach/assessments', coaching.assessments),
+    path('api/coach/notes', coaching.notes),
+    path('api/coach/notes/<int:note_id>', coaching.note_detail),
+    path('api/coach/training-programs', coaching.programs),
+    path('api/coach/training-programs/<int:program_id>', coaching.program_detail),
+    path('api/coach/sessions', coaching.sessions),
+    path('api/coach/sessions/<int:session_id>', coaching.session_detail),
+    path('api/coach/exercises', coaching.exercises),
     path("api/coach/members", views.coach_members_api),
     path("api/coach/programs", views.coach_programs_api),
     path("api/coach/programs/<int:program_id>", views.coach_program_api),

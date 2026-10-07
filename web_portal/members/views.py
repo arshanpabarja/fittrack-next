@@ -19,6 +19,7 @@ from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
+from django.views.decorators.cache import never_cache
 
 from .models import CoachProfile, LegacyMember, MembershipApplication, Plan, SignupOTP, User, WorkoutProgram, LoginEvent, OwnerAudit
 from .permissions import is_manager as _is_admin, is_owner as _is_owner, protected_account
@@ -189,6 +190,8 @@ def reconcile_pending_user(user):
 
 @ensure_csrf_cookie
 def page(request, name):
+    if name == 'coach-panel.html' and not _is_coach(request.user):
+        return redirect('/login')
     if name == 'admin.html' and not _is_owner(request.user):
         return redirect('/admin' if _is_admin(request.user) else '/login')
     if name == 'admin-panel.html' and not _is_admin(request.user):
@@ -410,7 +413,7 @@ def me_api(request):
 
 
 def _is_coach(user):
-    return user.is_authenticated and user.role == User.Role.COACH and user.status == User.Status.ACTIVE
+    return user.is_authenticated and user.is_active and user.role == User.Role.COACH and user.status == User.Status.ACTIVE
 
 
 def public_coach(user):
@@ -459,6 +462,7 @@ def admin_user_status_api(request, user_id):
     return JsonResponse({"ok": True, "status": status})
 
 
+@never_cache
 @require_http_methods(["GET", "PATCH"])
 def coach_profile_api(request):
     if not _is_coach(request.user):
@@ -487,7 +491,8 @@ def coach_profile_api(request):
 
 def _coach_member_queryset(coach):
     profile, _ = CoachProfile.objects.get_or_create(user=coach)
-    allowed = profile.allowed_plans.filter(is_active=True)
+    # Withdrawing a plan from signup must not hide its existing members.
+    allowed = profile.allowed_plans.all()
     return User.objects.filter(
         role=User.Role.MEMBER,
         status=User.Status.ACTIVE,
@@ -498,6 +503,7 @@ def _coach_member_queryset(coach):
     )
 
 
+@never_cache
 @require_GET
 def coach_members_api(request):
     if not _is_coach(request.user):
@@ -513,8 +519,7 @@ def coach_members_api(request):
     data = [
         {
             "id": member.id,
-            "fullName": member.get_full_name().strip() or member.mobile,
-            "mobile": member.mobile,
+            "fullName": member.get_full_name().strip() or 'ورزشکار',
             "plan": member.membership_application.plan.name,
         }
         for member in members[:200]
@@ -581,6 +586,7 @@ def _validate_weekly_schedule(payload):
     return duration_weeks, normalized_days, "\n".join(flattened)
 
 
+@never_cache
 @require_http_methods(["GET", "POST"])
 def coach_programs_api(request):
     if not _is_coach(request.user):
@@ -600,37 +606,50 @@ def coach_programs_api(request):
         member = _coach_member_queryset(request.user).filter(pk=member_id).first()
         if not member:
             return error("این ورزشکار در پلن‌های مجاز شما نیست.", status=403)
-        program, _ = WorkoutProgram.objects.update_or_create(
-            coach=request.user,
-            member=member,
-            defaults={
-                "title": title,
-                "exercises": flattened_or_error[:8000],
-                "duration_weeks": duration_weeks,
-                "schedule_json": days,
-            },
-        )
+        from .coaching import save_revision
+        with transaction.atomic():
+            User.objects.select_for_update().get(pk=request.user.pk)
+            existing = WorkoutProgram.objects.select_for_update().filter(coach=request.user, member=member).first()
+            if existing:
+                save_revision(existing)
+            program, _ = WorkoutProgram.objects.update_or_create(
+                coach=request.user,
+                member=member,
+                defaults={
+                    "title": title,
+                    "exercises": flattened_or_error[:8000],
+                    "duration_weeks": duration_weeks,
+                    "schedule_json": days,
+                    "archived_at": None,
+                    "start_date": None,
+                    "end_date": None,
+                    "main_goal": '',
+                    "coach_notes": '',
+                },
+            )
         return JsonResponse({"ok": True, "programId": program.id})
-    programs = WorkoutProgram.objects.filter(coach=request.user).select_related("member")
+    programs = WorkoutProgram.objects.filter(coach=request.user, member__in=_coach_member_queryset(request.user), archived_at=None).select_related("member")
     data = []
     for program in programs:
         item = _program_payload(program)
         item.update({
             "memberId": program.member_id,
-            "memberName": program.member.get_full_name().strip() or program.member.mobile,
+            "memberName": program.member.get_full_name().strip() or 'ورزشکار',
         })
         data.append(item)
     return JsonResponse({"ok": True, "programs": data})
 
 
+@never_cache
 @require_http_methods(["DELETE"])
 def coach_program_api(request, program_id):
     if not _is_coach(request.user):
         return error("دسترسی مربی لازم است.", status=403)
-    program = WorkoutProgram.objects.filter(pk=program_id, coach=request.user).first()
+    program = WorkoutProgram.objects.filter(pk=program_id, coach=request.user, member__in=_coach_member_queryset(request.user)).first()
     if not program:
         return error("برنامه تمرینی پیدا نشد.", status=404)
-    program.delete()
+    program.archived_at = timezone.now()
+    program.save(update_fields=['archived_at', 'updated_at'])
     return JsonResponse({"ok": True})
 
 
@@ -638,7 +657,7 @@ def coach_program_api(request, program_id):
 def member_program_api(request):
     if not request.user.is_authenticated or request.user.role != User.Role.MEMBER:
         return error("دسترسی عضو لازم است.", status=403)
-    program = WorkoutProgram.objects.filter(member=request.user).select_related("coach").first()
+    program = WorkoutProgram.objects.filter(member=request.user, archived_at=None).select_related("coach").first()
     if not program:
         return JsonResponse({"ok": True, "program": None})
     data = _program_payload(program)

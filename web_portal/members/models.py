@@ -151,6 +151,11 @@ class WorkoutProgram(models.Model):
     exercises = models.TextField()
     duration_weeks = models.PositiveSmallIntegerField(default=4)
     schedule_json = models.JSONField(default=list, blank=True)
+    main_goal = models.CharField(max_length=40, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    coach_notes = models.TextField(blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -165,6 +170,109 @@ class WorkoutProgram(models.Model):
 
     def __str__(self):
         return f"{self.title} — {self.member.get_full_name() or self.member.mobile}"
+
+
+class TrainingProfile(models.Model):
+    coach = models.ForeignKey(User, on_delete=models.CASCADE, related_name='client_training_profiles')
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='training_profiles')
+    main_goal = models.CharField(max_length=40, blank=True)
+    experience = models.CharField(max_length=40, blank=True)
+    frequency = models.PositiveSmallIntegerField(default=3)
+    preferred_style = models.CharField(max_length=160, blank=True)
+    limitations = models.TextField(blank=True)
+    injuries = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    reported_pain = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['coach', 'member'], name='unique_coach_training_profile')]
+
+
+class ProgramRevision(models.Model):
+    program = models.ForeignKey(WorkoutProgram, on_delete=models.CASCADE, related_name='revisions')
+    snapshot = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+
+class Assessment(models.Model):
+    coach = models.ForeignKey(User, on_delete=models.CASCADE, related_name='client_assessments')
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assessments')
+    measured_on = models.DateField(default=timezone.localdate)
+    weight = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    height = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    body_fat = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    waist = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    chest = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    arms = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    thighs = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    bench_press = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    squat = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    deadlift = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    pull_ups = models.PositiveSmallIntegerField(null=True, blank=True)
+    fitness_notes = models.TextField(blank=True)
+    mobility_notes = models.TextField(blank=True)
+    strength_notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-measured_on', '-id']
+
+
+class TrainingSession(models.Model):
+    class Status(models.TextChoices):
+        SCHEDULED = 'scheduled', 'برنامه‌ریزی‌شده'
+        IN_PROGRESS = 'in_progress', 'در حال تمرین'
+        COMPLETED = 'completed', 'انجام‌شده'
+        CANCELLED = 'cancelled', 'لغوشده'
+        NO_SHOW = 'no_show', 'عدم حضور'
+
+    coach = models.ForeignKey(User, on_delete=models.CASCADE, related_name='coached_sessions')
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='training_sessions')
+    program = models.ForeignKey(WorkoutProgram, on_delete=models.SET_NULL, null=True, blank=True)
+    program_title = models.CharField(max_length=180, blank=True)
+    training_day = models.CharField(max_length=160, blank=True)
+    scheduled_at = models.DateTimeField(db_index=True)
+    duration_minutes = models.PositiveSmallIntegerField(default=60)
+    group_label = models.CharField(max_length=160, blank=True)
+    exercises = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.SCHEDULED)
+    notes = models.TextField(blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['scheduled_at', 'id']
+
+
+class CoachNote(models.Model):
+    coach = models.ForeignKey(User, on_delete=models.CASCADE, related_name='private_coach_notes')
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='coach_notes')
+    session = models.ForeignKey(TrainingSession, on_delete=models.SET_NULL, null=True, blank=True)
+    content = models.TextField()
+    follow_up_on = models.DateField(null=True, blank=True)
+    resolved = models.BooleanField(default=False)
+    reported_pain = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+
+class Exercise(models.Model):
+    coach = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='custom_exercises')
+    name = models.CharField(max_length=160)
+    muscle_group = models.CharField(max_length=24)
+    equipment = models.CharField(max_length=160, blank=True)
+    instructions = models.TextField(blank=True)
+    common_mistakes = models.TextField(blank=True)
+    media_url = models.URLField(blank=True)
+
+    class Meta:
+        ordering = ['muscle_group', 'name', 'id']
 
 
 class LoginEvent(models.Model):

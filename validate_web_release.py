@@ -39,7 +39,7 @@ assert anonymous.get('/api/owner/overview', secure=True, **host).status_code == 
 login_page = anonymous.get('/login', secure=True, **host)
 assert login_page.status_code == 200
 assert login_page.cookies['csrftoken']['secure']
-for path in ('/owner.js', '/owner.css', '/assets/icons/users.svg', '/assets/Vazirmatn-Variable.ttf'):
+for path in ('/owner.js', '/owner.css', '/coach.js', '/coach.css', '/assets/icons/users.svg', '/assets/Vazirmatn-Variable.ttf'):
     response = anonymous.get(path, secure=True, **host)
     assert response.status_code == 200, path
     response.close()
@@ -70,6 +70,14 @@ assert anonymous.get('/owner', secure=True, **host).status_code == 302
 insights = anonymous.get('/api/owner/overview', secure=True, **host).json()
 assert 'monthPayments' not in insights['metrics']
 assert all('payments' not in point for point in insights['series'])
+coach = User.objects.create_user(mobile='09120000003', password='CoachReleaseOnly482!', role='coach', status='active')
+anonymous.force_login(coach)
+assert anonymous.get('/coach-panel', secure=True, **host).status_code == 200
+workspace = anonymous.get('/api/coach/workspace', secure=True, **host)
+assert workspace.status_code == 200 and workspace.json()['clients'] == []
+assert 'no-store' in workspace['Cache-Control']
+assert len(anonymous.get('/api/coach/exercises', secure=True, **host).json()['exercises']) == 10
+assert anonymous.get('/api/owner/overview', secure=True, **host).status_code == 403
 print('Production smoke passed: HTTPS, proxy, cookies, CSRF, owner/admin separation, APIs, assets, shared calendar')
 '''
 
