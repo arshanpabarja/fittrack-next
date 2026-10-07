@@ -1,4 +1,5 @@
-from PyQt6.QtCore import Qt, QThreadPool, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QRegularExpression, QThreadPool, QTimer, pyqtSignal
+from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -103,9 +104,14 @@ class WalkInSignupPage(QWidget):
         form.setSpacing(8)
         self.full_name = QLineEdit()
         self.mobile = QLineEdit()
-        self.mobile.setInputMask("00000000000")
         self.national_id = QLineEdit()
-        self.national_id.setInputMask("0000000000")
+        for field, length in ((self.mobile, 11), (self.national_id, 10)):
+            field.setMaxLength(length)
+            field.setValidator(QRegularExpressionValidator(
+                QRegularExpression(f"[0-9۰-۹٠-٩]{{0,{length}}}"), field
+            ))
+            field.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+            field.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.father_name = QLineEdit()
         self.certificate_no = QLineEdit()
         self.age = QSpinBox()
