@@ -1253,7 +1253,7 @@
   font-variant-numeric:tabular-nums;
 }
 
-#activity-period {
+#activity-period, #attendance-period {
   background:var(--surface);
   border:1px solid var(--border);
   color:var(--text);
@@ -1267,6 +1267,20 @@
 #attendance-warning {
   font-size:11px;
   color:var(--danger);
+}
+
+#attendance-summary {
+  font-size:18px;
+  font-weight:700;
+  margin:16px 0;
+}
+
+#attendance-dialog .users-table {
+  min-width:380px;
+}
+
+#attendance-dialog .owner-pagination {
+  flex-wrap:wrap;
 }
 
 .owner-plan-grid {

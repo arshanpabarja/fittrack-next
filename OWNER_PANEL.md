@@ -10,6 +10,19 @@ updates, coach/workout management through Django admin, and an owner change hist
 Reports refresh every 30 seconds. Month means the current Gregorian calendar month in Tehran time.
 Website login history starts with installation; historical attendance uses the desktop state database.
 
+Attendance search filters names and phone numbers on the server before the 500-row
+display limit, including Persian/Arabic phone digits. It filters both gym attendance
+and website logins; counts refer to matching events in the selected period.
+The attendance table's **تردد** button opens a member's visit count and dated
+entry/exit list, paginated in 50-row pages. Both the report and member dialog retain
+the **today / current Gregorian month** selector. The dialog initially inherits the
+report period and can switch its period independently. Records are matched by gym
+member ID, so duplicate names or phone numbers do not combine different profiles.
+`GET /api/owner/attendance/<member_id>` (also `/api/admin/attendance/<member_id>`)
+uses the configured local or synchronized source and existing manager permissions.
+The member attendance endpoint accepts `period=today|month` and `page`; the default
+period is `month`. Periods use Tehran calendar dates, just like the report.
+
 The Django database must be the same gym_users.db used by the desktop. Defaults:
 - ../database/gym_users.db (relative to FitTrack Next)
 - ../database/plans.json

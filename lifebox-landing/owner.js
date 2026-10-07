@@ -3,7 +3,8 @@
   const isOwnerPanel = document.body.dataset.panelRole === 'owner';
   const apiRoot = isOwnerPanel ? '/api/owner' : '/api/admin';
   let remoteSync = false, members = [], plans = [], overview = null;
-  let editingMember, editingPlan, refreshing = false, memberPage = 1;
+  let editingMember, editingPlan, refreshing = false, refreshPending = false, memberPage = 1;
+  let activityAttendance = [], attendanceMember = null, attendanceRequest = 0, activitySearchTimer;
   let memberFilter = 'all', followupFilter = 'expiring';
   const html = escapeHtml;
   const number = value => value == null ? '—' : new Intl.NumberFormat('fa-IR').format(value);
@@ -108,24 +109,26 @@
     renderFollowups(); drawCharts();
   }
   function renderActivity(activity) {
+    activityAttendance = activity.attendance;
     $('#activity-visits').textContent = activity.attendanceAvailable ? number(activity.visitCount) : '—';
     $('#metric-visitors').textContent = activity.attendanceAvailable ? `${number(activity.visitors)} عضو یکتا` : 'اطلاعات حضور در دسترس نیست';
     $('#metric-logins').textContent = number(activity.loginCount);
     $('#metric-login-users').textContent = `${number(activity.loginUsers)} کاربر یکتا`;
     $('#activity-range').textContent = `${formatDate(activity.start)} تا ${formatDate(activity.end)} · ساعت تهران`;
     $('#attendance-warning').textContent = activity.syncedAt ? `آخرین دریافت از باشگاه: ${new Date(activity.syncedAt).toLocaleString('fa-IR',{timeZone:'Asia/Tehran'})}` : (activity.attendanceAvailable ? '' : 'اطلاعات حضور باشگاه هنوز دریافت نشده است.');
-    $('#owner-attendance').innerHTML = activity.attendance.map(a => `<tr><td><strong>${html(a.full_name)}</strong><small>${html(toFa(a.mobile))}</small></td><td>${html(stamp(a.checked_in_at))}</td><td>${a.checked_out_at ? html(stamp(a.checked_out_at)) : '<span class="status-badge active">داخل باشگاه</span>'}</td><td>${number(a.locker_id)}</td></tr>`).join('') || empty(4,activity.attendanceAvailable ? 'در این بازه مراجعه‌ای ثبت نشده است.' : 'اطلاعات حضور در دسترس نیست.');
+    $('#owner-attendance').innerHTML = activity.attendance.map(a => `<tr><td><strong>${html(a.full_name)}</strong><small>${html(toFa(a.mobile))}</small></td><td>${html(stamp(a.checked_in_at))}</td><td>${a.checked_out_at ? html(stamp(a.checked_out_at)) : '<span class="status-badge active">داخل باشگاه</span>'}</td><td><button class="table-action" data-attendance-member="${Number(a.member_id)}" aria-label="تردد ${html(a.full_name)}">تردد</button></td></tr>`).join('') || empty(4,activity.attendanceAvailable ? (activity.search ? 'با این نام یا شماره موبایل، مراجعه‌ای در این بازه پیدا نشد.' : 'در این بازه مراجعه‌ای ثبت نشده است.') : 'اطلاعات حضور در دسترس نیست.');
     $('#owner-logins').innerHTML = activity.logins.map(l => `<tr><td>${html(l.name)}</td><td>${html(toFa(l.mobile))}</td><td>${html(formatDate(l.at))} · ${html(clock(l.at))}</td></tr>`).join('') || empty(3,'در این بازه ورود به سایت ثبت نشده است.');
     $('#owner-audit').innerHTML = activity.audit.map(a => `<li><span>${html(a.action)}</span><small>${html(formatDate(a.at))} · ${html(clock(a.at))}</small></li>`).join('') || '<li class="empty-state">هنوز تغییری ثبت نشده است.</li>';
   }
   async function refresh() {
-    if (refreshing) return;
+    if (refreshing) { refreshPending = true; return; }
     refreshing = true; $('#refresh-owner').disabled = true;
     $('#owner-date').textContent=new Intl.DateTimeFormat('fa-IR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Tehran'}).format(new Date());
     $('#owner-content').setAttribute('aria-busy','true');
     try {
       const period = $('#activity-period').value;
-      const [directory,catalog,activity,insights] = await Promise.all([api(`${apiRoot}/members`),isOwnerPanel ? api(`${apiRoot}/plans`) : Promise.resolve({plans:[]}),api(`${apiRoot}/activity?period=${period}`),api(`${apiRoot}/overview`)]);
+      const search = $('#activity-search').value.trim();
+      const [directory,catalog,activity,insights] = await Promise.all([api(`${apiRoot}/members`),isOwnerPanel ? api(`${apiRoot}/plans`) : Promise.resolve({plans:[]}),api(`${apiRoot}/activity?${new URLSearchParams({period,search})}`),api(`${apiRoot}/overview`)]);
       remoteSync = Boolean(directory.remoteSync); overview = insights;
       const details = new Map(insights.members.map(m => [m.key,m]));
       members = directory.members.map(m => ({...m,...details.get(m.key)}));
@@ -135,7 +138,45 @@
       feedback(`آخرین دریافت: ${clock(new Date().toISOString())} · هر ۳۰ ثانیه${activity.syncedAt ? ` · آخرین همگام‌سازی باشگاه: ${formatDate(activity.syncedAt)} ${clock(activity.syncedAt)}` : ''}`);
       if (!overview.attendanceAvailable || !overview.paymentsAvailable) feedback('بعضی سوابق باشگاه در دسترس نیست؛ علامت — یعنی داده دریافت نشده است.');
     } catch(e) { feedback(`${e.message}${overview ? ' · آخرین اطلاعات دریافت‌شده نمایش داده می‌شود.' : ' · برای تلاش دوباره، به‌روزرسانی را بزنید.'}`,true); }
-    finally { refreshing = false; $('#refresh-owner').disabled = false; $('#owner-content').setAttribute('aria-busy','false'); }
+    finally { refreshing = false; $('#refresh-owner').disabled = false; $('#owner-content').setAttribute('aria-busy','false'); if(refreshPending){refreshPending=false;refresh();} }
+  }
+  async function openAttendance(memberId, page = 1) {
+    const dialog = $('#attendance-dialog');
+    if (!dialog.open) {
+      const member = activityAttendance.find(a => a.member_id === Number(memberId));
+      if (!member) return;
+      attendanceMember = {id:Number(memberId),name:member.full_name,page:1};
+      $('#attendance-period').value = $('#activity-period').value;
+      $('#attendance-title').textContent = `تردد ${member.full_name}`;
+      dialog.showModal();
+    }
+    const requestId = ++attendanceRequest;
+    const period = $('#attendance-period').value;
+    $('#attendance-summary').textContent = 'در حال دریافت سوابق…';
+    $('#attendance-range').textContent = '';
+    $('#attendance-sync').textContent = '';
+    $('#attendance-history').innerHTML = empty(3,'در حال دریافت سوابق…');
+    $('#attendance-page').textContent = '';
+    $('#attendance-previous').disabled = $('#attendance-next').disabled = true;
+    dialog.setAttribute('aria-busy','true');
+    try {
+      const data = await api(`${apiRoot}/attendance/${attendanceMember.id}?${new URLSearchParams({page,period})}`);
+      if (requestId !== attendanceRequest || !dialog.open) return;
+      attendanceMember.page = data.page;
+      $('#attendance-range').textContent = `${formatDate(data.start)} تا ${formatDate(data.end)} · ساعت تهران`;
+      $('#attendance-summary').textContent = data.attendanceAvailable ? `${number(data.visitCount)} مراجعه ثبت‌شده` : 'سوابق حضور در دسترس نیست.';
+      $('#attendance-sync').textContent = data.syncedAt ? `آخرین دریافت از باشگاه: ${formatDate(data.syncedAt)} · ${clock(data.syncedAt)}` : '';
+      $('#attendance-history').innerHTML = data.attendance.map((a,i) => `<tr><td>${number((data.page-1)*data.pageSize+i+1)}</td><td>${html(stamp(a.checked_in_at))}</td><td>${a.checked_out_at ? html(stamp(a.checked_out_at)) : '<span class="status-badge active">داخل باشگاه</span>'}</td></tr>`).join('') || empty(3,data.attendanceAvailable ? 'در این بازه مراجعه‌ای ثبت نشده است.' : 'سوابق حضور هنوز دریافت نشده است.');
+      $('#attendance-page').textContent = `صفحه ${number(data.page)} از ${number(Math.max(1,Math.ceil(data.visitCount/data.pageSize)))}`;
+      $('#attendance-previous').disabled = data.page === 1;
+      $('#attendance-next').disabled = !data.hasNext;
+    } catch(e) {
+      if(requestId !== attendanceRequest || !dialog.open)return;
+      $('#attendance-summary').textContent = e.message;
+      $('#attendance-history').innerHTML = empty(3,'دریافت سوابق ناموفق بود؛ دوباره تلاش کنید.');
+    } finally {
+      if(requestId === attendanceRequest)dialog.setAttribute('aria-busy','false');
+    }
   }
   function prepareCanvas(canvas) {
     if (!canvas || !canvas.clientWidth) return null;
@@ -259,6 +300,11 @@
     $('#previous-members').addEventListener('click',()=>{memberPage--;renderMembers();});
     $('#next-members').addEventListener('click',()=>{memberPage++;renderMembers();});
     $('#refresh-owner').addEventListener('click',refresh);$('#activity-period').addEventListener('change',refresh);
+    $('#activity-search').addEventListener('input',()=>{clearTimeout(activitySearchTimer);activitySearchTimer=setTimeout(refresh,300);});
+    $('#attendance-previous').addEventListener('click',()=>openAttendance(attendanceMember.id,attendanceMember.page-1));
+    $('#attendance-next').addEventListener('click',()=>openAttendance(attendanceMember.id,attendanceMember.page+1));
+    $('#attendance-period').addEventListener('change',()=>openAttendance(attendanceMember.id,1));
+    $('#attendance-dialog').addEventListener('close',()=>{attendanceRequest++;$('#attendance-dialog').setAttribute('aria-busy','false');});
     $('#chart-period')?.addEventListener('change',drawRevenue);$('#new-plan')?.addEventListener('click',()=>openPlan());
     $('#member-form').addEventListener('submit',e=>submit(e,'member'));$('#plan-form')?.addEventListener('submit',e=>submit(e,'plan'));
     $$('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
@@ -268,6 +314,7 @@
       if(e.target.closest('.side-nav a[href^="#"]')) setMenu(false);
       const filter=e.target.closest('[data-filter-link]');if(filter){$('#owner-search').value='';setFilter(filter.dataset.filterLink);navigate();}
       const edit=e.target.closest('[data-edit-member]');if(edit)return openMember(edit.dataset.editMember);
+      const attendance=e.target.closest('[data-attendance-member]');if(attendance)return openAttendance(attendance.dataset.attendanceMember);
       const plan=e.target.closest('[data-edit-plan]');if(plan)return openPlan(plan.dataset.editPlan);
       const b=e.target.closest('[data-status-member]');if(!b)return;
       b.disabled=true;try{await api(`/api/admin/users/${b.dataset.statusMember}/status`,{method:'PATCH',body:JSON.stringify({status:b.dataset.status})});await refresh();}catch(e){feedback(e.message,true);}finally{b.disabled=false;}

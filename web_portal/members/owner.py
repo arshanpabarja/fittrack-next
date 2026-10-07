@@ -200,6 +200,7 @@ def attendance_connection():
 @management_only
 @require_http_methods(['GET'])
 def activity(request):
+    from .attendance_reports import attendance_report, search_terms
     period = request.GET.get('period', 'today')
     if period not in {'today', 'month'}:
         return error('بازه معتبر نیست.')
@@ -210,36 +211,37 @@ def activity(request):
     since = timezone.make_aware(datetime.combine(start, time.min))
     until = timezone.make_aware(datetime.combine(end, time.min))
     events = LoginEvent.objects.filter(occurred_at__gte=since, occurred_at__lt=until)
+    search = request.GET.get('search', '').strip()[:100]
+    for term in search_terms(search):
+        events = events.filter(Q(user__first_name__icontains=term) | Q(user__last_name__icontains=term) |
+                               Q(user__mobile__icontains=normalize_digits(term)))
     logins = [dict(name=e.user.get_full_name() or e.user.mobile, mobile=e.user.mobile, at=e.occurred_at.isoformat())
               for e in events.select_related('user').order_by('-occurred_at')[:500]]
-    attendance = []
-    available = True
-    count = inside = unique = 0
-    try:
-        with closing(attendance_connection()) as conn:
-            conn.row_factory = sqlite3.Row
-            bounds = (start.isoformat(), end.isoformat())
-            count, unique = conn.execute('SELECT COUNT(*), COUNT(DISTINCT member_id) FROM attendance_sessions WHERE checked_in_at>=? AND checked_in_at<?', bounds).fetchone()
-            inside = conn.execute('SELECT COUNT(*) FROM attendance_sessions WHERE checked_out_at IS NULL').fetchone()[0]
-            attendance = [dict(r) for r in conn.execute('SELECT member_id,full_name,mobile,plan,checked_in_at,checked_out_at,locker_id FROM attendance_sessions WHERE checked_in_at>=? AND checked_in_at<? ORDER BY checked_in_at DESC LIMIT 500', bounds)]
-    except (sqlite3.Error, OSError):
-        available = False
-    synced_at = None
-    if settings.FITTRACK_REMOTE_SYNC:
-        from .models import GymSyncRecord, GymSyncCursor
-        rows = GymSyncRecord.objects.filter(kind='attendance')
-        visits = rows.filter(data__checked_in_at__gte=start.isoformat(), data__checked_in_at__lt=end.isoformat())
-        count = visits.count()
-        unique = visits.values('data__member_id').distinct().count()
-        inside = rows.filter(data__checked_out_at=None).count()
-        attendance = list(visits.order_by('-data__checked_in_at').values_list('data', flat=True)[:500])
-        cursor = GymSyncCursor.objects.first()
-        available = bool(cursor and cursor.sequence)
-        synced_at = cursor.updated_at.isoformat() if available else None
+    report = attendance_report(start, end, search=search)
     return JsonResponse(dict(ok=True, period=period, start=start.isoformat(), end=today.isoformat(), logins=logins,
-                             loginCount=events.count(), loginUsers=events.values('user_id').distinct().count(), attendance=attendance,
-                             attendanceAvailable=available, syncedAt=synced_at, visitCount=count, visitors=unique, inside=inside,
+                             loginCount=events.count(), loginUsers=events.values('user_id').distinct().count(),
+                             search=search, **report,
                              audit=[dict(action=a.action, at=a.occurred_at.isoformat()) for a in OwnerAudit.objects.order_by('-occurred_at')[:30]]))
+
+
+@management_only
+@require_http_methods(['GET'])
+def member_attendance(request, member_id):
+    from .attendance_reports import attendance_report
+    period = request.GET.get('period', 'month')
+    if period not in {'today', 'month'}:
+        return error('بازه معتبر نیست.')
+    try:
+        page = int(request.GET.get('page', '1'))
+        if page < 1 or page > 1000000:
+            raise ValueError
+    except ValueError:
+        return error('شماره صفحه معتبر نیست.')
+    today = timezone.localdate()
+    start = today if period == 'today' else today.replace(day=1)
+    end = today + timedelta(days=1)
+    report = attendance_report(start, end, member_id=member_id, page=page, page_size=50)
+    return JsonResponse(dict(ok=True, memberId=member_id, period=period, start=start.isoformat(), end=today.isoformat(), **report))
 
 
 def write_plan_catalog(plan, old_name=None):
