@@ -78,6 +78,18 @@ assert workspace.status_code == 200 and workspace.json()['clients'] == []
 assert 'no-store' in workspace['Cache-Control']
 assert len(anonymous.get('/api/coach/exercises', secure=True, **host).json()['exercises']) == 10
 assert anonymous.get('/api/owner/overview', secure=True, **host).status_code == 403
+member = User.objects.create_user(mobile='09120000004', password='MemberReleaseOnly482!', role='member', status='active')
+anonymous.force_login(member)
+panel = anonymous.get('/dashboard', secure=True, **host)
+assert panel.status_code == 200 and b'member-bootstrap' in panel.content
+assert 'no-store' in panel['Cache-Control']
+workspace = anonymous.get('/api/member/workspace', secure=True, **host)
+assert workspace.status_code == 200 and workspace.json()['program'] is None
+assert workspace.json()['workouts'] == []
+assert 'no-store' in workspace['Cache-Control']
+for path in ('/member.css', '/member.js', '/assets/Vazirmatn-Variable.woff2'):
+    assert anonymous.get(path, secure=True, **host).status_code == 200
+assert anonymous.get('/api/owner/overview', secure=True, **host).status_code == 403
 print('Production smoke passed: HTTPS, proxy, cookies, CSRF, owner/admin separation, APIs, assets, shared calendar')
 '''
 

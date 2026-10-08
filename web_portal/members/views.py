@@ -190,6 +190,14 @@ def reconcile_pending_user(user):
 
 @ensure_csrf_cookie
 def page(request, name):
+    if name == 'dashboard.html':
+        if not request.user.is_authenticated:
+            return redirect('/login')
+        if request.user.role != User.Role.MEMBER:
+            return redirect('/owner' if _is_owner(request.user) else '/admin' if _is_admin(request.user) else '/coach-panel' if _is_coach(request.user) else '/login')
+        reconcile_pending_user(request.user)
+        if request.user.status != User.Status.ACTIVE or not request.user.is_active:
+            return redirect('/pending' if request.user.status == User.Status.PENDING else '/login')
     if name == 'coach-panel.html' and not _is_coach(request.user):
         return redirect('/login')
     if name == 'admin.html' and not _is_owner(request.user):
@@ -200,7 +208,11 @@ def page(request, name):
         return redirect('/owner')
     if name not in PUBLIC_PAGES or not (PUBLIC_ROOT / name).is_file():
         raise Http404
-    response = render(request, name)
+    context = {}
+    if name == 'dashboard.html':
+        from .member_panel import build_workspace
+        context['member_workspace'] = build_workspace(request.user)
+    response = render(request, name, context)
     response["Cache-Control"] = "no-store"
     return response
 
@@ -629,9 +641,10 @@ def coach_programs_api(request):
             )
         return JsonResponse({"ok": True, "programId": program.id})
     programs = WorkoutProgram.objects.filter(coach=request.user, member__in=_coach_member_queryset(request.user), archived_at=None).select_related("member")
+    from .coaching import without_notes
     data = []
     for program in programs:
-        item = _program_payload(program)
+        item = without_notes(_program_payload(program))
         item.update({
             "memberId": program.member_id,
             "memberName": program.member.get_full_name().strip() or 'ورزشکار',

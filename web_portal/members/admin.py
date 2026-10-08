@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import CoachProfile, MembershipApplication, Plan, User, WorkoutProgram
+from .models import CoachProfile, MembershipApplication, Plan, User, WorkoutProgram, MemberRequest
 
 
 @admin.register(User)
@@ -45,4 +45,13 @@ class MembershipApplicationAdmin(admin.ModelAdmin):
     list_filter = ("status", "plan")
     search_fields = ("user__mobile", "user__first_name", "user__last_name", "user__national_id")
 
-# Register your models here.
+@admin.register(MemberRequest)
+class MemberRequestAdmin(admin.ModelAdmin):
+    list_display = ('member', 'kind', 'status', 'created_at')
+    list_filter = ('status', 'kind')
+    search_fields = ('member__mobile', 'member__first_name', 'member__last_name', 'message')
+    readonly_fields = ('member', 'kind', 'message', 'created_at', 'updated_at')
+    fields = ('member', 'kind', 'message', 'status', 'reply', 'created_at', 'updated_at')
+
+    def has_add_permission(self, request):
+        return False

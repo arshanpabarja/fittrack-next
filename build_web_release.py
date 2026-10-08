@@ -19,13 +19,13 @@ def release_files():
         '__init__.py', 'domain/__init__.py', 'domain/dates.py', 'domain/membership.py')]
     files += [ROOT / 'lifebox-landing' / (page + '.html') for page in PAGES]
     files += [ROOT / 'lifebox-landing' / name for name in (
-        'app.js', 'styles.css', 'owner.js', 'owner.css', 'coach.js', 'coach.css', 'robots.txt', 'sitemap.xml', 'PRODUCTION.md')]
+        'app.js', 'styles.css', 'owner.js', 'owner.css', 'coach.js', 'coach.css', 'member.js', 'member.css', 'robots.txt', 'sitemap.xml', 'PRODUCTION.md')]
     files += [path for path in (ROOT / 'lifebox-landing/assets').rglob('*')
               if path.is_file() and path.suffix.lower() in ASSET_SUFFIXES]
     files += [ROOT / 'deploy' / name for name in (
         'requirements-web.txt', 'deploy.env.example', 'gunicorn.conf.py',
         'lifebox.service.example', 'nginx.conf.example', 'README.md')]
-    files += [ROOT / name for name in ('CLOUD_DEPLOYMENT.md', 'OWNER_PANEL.md', 'COACH_PANEL.md')]
+    files += [ROOT / name for name in ('CLOUD_DEPLOYMENT.md', 'OWNER_PANEL.md', 'COACH_PANEL.md', 'MEMBER_PANEL.md')]
     for path in files:
         if not path.is_file() or path.is_symlink():
             raise ValueError(f'Missing or symbolic release file: {path.relative_to(ROOT)}')

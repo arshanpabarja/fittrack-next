@@ -13,18 +13,14 @@
   <a class="skip-link" href="#workspace-content">رفتن به محتوای اصلی</a>
   <aside class="coach-sidebar" id="coach-sidebar">
     <a class="coach-brand" href="/"><img src="/assets/gym-logo.png" alt="" width="42" height="42" /><span><b dir="ltr">LIFEBOX<span class="brand-dot">.</span></b><small>فضای مربی</small></span></a>
-    <div class="workspace-label">مربی‌گری، با تمرکز روی پیشرفت</div>
+    <div class="workspace-label">ورزشکاران و تمرین‌های شما</div>
     <nav aria-label="بخش‌های پنل مربی">
       <a href="#dashboard" data-view="dashboard"><img src="/assets/icons/layout-dashboard.svg" alt="" />نمای کلی</a>
       <a href="#clients" data-view="clients"><img src="/assets/icons/users.svg" alt="" />ورزشکاران من<span id="nav-client-count"></span></a>
       <a href="#programs" data-view="programs"><img src="/assets/icons/clipboard-list.svg" alt="" />برنامه‌های تمرینی</a>
       <a href="#sessions" data-view="sessions"><img src="/assets/icons/barbell.svg" alt="" />جلسات تمرین</a>
-      <a href="#schedule" data-view="schedule"><img src="/assets/icons/calendar.svg" alt="" />تقویم مربی</a>
       <div class="nav-divider"></div>
-      <a href="#assessments" data-view="assessments"><img src="/assets/icons/clipboard-list.svg" alt="" />ارزیابی‌ها</a>
-      <a href="#progress" data-view="progress"><img src="/assets/icons/arrow-up-left.svg" alt="" />روند پیشرفت</a>
       <a href="#library" data-view="library"><img src="/assets/icons/barbell.svg" alt="" />کتابخانه حرکات</a>
-      <a href="#notes" data-view="notes"><img src="/assets/icons/bell.svg" alt="" />یادداشت و پیگیری<span id="nav-alert-count"></span></a>
       <div class="nav-divider"></div>
       <a href="#performance" data-view="performance"><img src="/assets/icons/circle-check.svg" alt="" />عملکرد من</a>
       <a href="#profile" data-view="profile"><img src="/assets/icons/id.svg" alt="" />پروفایل من</a>
@@ -35,10 +31,10 @@
   <div class="workspace-shell">
     <header class="workspace-topbar">
       <div class="topbar-location"><button class="icon-button mobile-menu" id="menu-button" aria-label="باز کردن منو" aria-expanded="false" aria-controls="coach-sidebar"><img src="/assets/icons/menu-2.svg" alt="" /></button><span>پنل مربی</span><span class="breadcrumb-slash">/</span><strong id="current-location">نمای کلی</strong></div>
-      <div class="topbar-tools"><label class="global-search"><img src="/assets/icons/search.svg" alt="" /><input id="global-search" type="search" placeholder="جستجوی ورزشکار..." aria-label="جستجوی ورزشکار" /></label><button class="icon-button" id="theme-button" aria-label="تغییر ظاهر"><img src="/assets/icons/moon.svg" alt="" /></button><a class="icon-button" href="#notes" aria-label="پیگیری‌ها"><img src="/assets/icons/bell.svg" alt="" /><span class="notification-dot" id="notification-dot" hidden></span></a></div>
+      <div class="topbar-tools"><label class="global-search"><img src="/assets/icons/search.svg" alt="" /><input id="global-search" type="search" placeholder="جستجوی ورزشکار..." aria-label="جستجوی ورزشکار" /></label><button class="icon-button" id="theme-button" aria-label="تغییر ظاهر"><img src="/assets/icons/moon.svg" alt="" /></button><a class="icon-button" href="#clients?filter=followup" aria-label="ورزشکاران نیازمند پیگیری"><img src="/assets/icons/bell.svg" alt="" /><span class="notification-dot" id="notification-dot" hidden></span></a></div>
     </header>
     <main id="workspace-content" tabindex="-1"><div class="loading-state" role="status">در حال دریافت فضای مربی...</div></main>
-    <footer class="workspace-footer"><span>ورزشکاران. تمرین. پیشرفت.</span><span dir="ltr">LifeBox Coach</span></footer>
+    <footer class="workspace-footer"><span>ورزشکاران. برنامه‌ها. تمرین.</span><span dir="ltr">LifeBox Coach</span></footer>
   </div>
   <dialog id="editor-dialog" aria-labelledby="dialog-title"><div class="dialog-header"><h2 id="dialog-title"></h2><button class="icon-button" type="button" id="close-dialog" aria-label="بستن"><img src="/assets/icons/x.svg" alt="" /></button></div><div id="dialog-content"></div></dialog>
   <div class="toast" role="status" id="toast" hidden></div>

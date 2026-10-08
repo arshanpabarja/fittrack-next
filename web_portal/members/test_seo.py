@@ -91,10 +91,12 @@ class PublicSearchTests(SimpleTestCase):
         self.assertIn('User-agent: *', body)
         self.assertIn('Sitemap: ' + ORIGIN + '/sitemap.xml', body)
         self.assertNotIn('Disallow:', body)
-        for path in ('/dashboard', '/pending'):
+        for path in ('/pending',):
             page = self.page(path)
             self.assertTrue(any('noindex' in meta.get('content', '') for meta in page.metas if meta.get('name') == 'robots'))
         self.assertEqual(self.client.get('/coach-panel').status_code, 302)
+        self.assertRedirects(self.client.get('/dashboard'), '/login')
+        self.assertIn('noindex', (PUBLIC_ROOT / 'dashboard.html').read_text(encoding='utf-8'))
 
     def test_club_schema_uses_visible_business_details_and_real_images(self):
         response = self.client.get('/')

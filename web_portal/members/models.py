@@ -348,3 +348,45 @@ class GymRemoteCommand(models.Model):
 
     class Meta:
         ordering = ['id']
+
+
+class MemberWorkout(models.Model):
+    """Member-entered results, separate from the coach's immutable prescription."""
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='workout_logs')
+    coach = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='member_workout_logs')
+    program = models.ForeignKey(WorkoutProgram, on_delete=models.SET_NULL, null=True)
+    program_title = models.CharField(max_length=180)
+    training_day = models.CharField(max_length=160)
+    day_index = models.PositiveSmallIntegerField(default=0)
+    exercises = models.JSONField(default=list)
+    personal_note = models.TextField(blank=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-started_at', '-id']
+        constraints = [models.UniqueConstraint(fields=['member'], condition=models.Q(finished_at__isnull=True), name='one_open_member_workout')]
+
+
+class MemberRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'در انتظار بررسی'
+        APPROVED = 'approved', 'تأییدشده'
+        CLOSED = 'closed', 'بسته‌شده'
+
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='support_requests')
+    kind = models.CharField(max_length=40)
+    message = models.TextField()
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    reply = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+
+class MemberPreferences(models.Model):
+    member = models.OneToOneField(User, on_delete=models.CASCADE, related_name='member_preferences')
+    notifications_enabled = models.BooleanField(default=True)
+    read_notifications = models.JSONField(default=list)
