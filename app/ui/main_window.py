@@ -91,8 +91,8 @@ class MainWindow(QMainWindow):
         dashboard = DashboardPage(
             self.services.dashboard,
             self.pool,
-            self.settings.assets_dir / "icons" / "site-signup-qr.svg",
-            f"{self.settings.django_base_url}/signup.html",
+            self.settings.assets_dir / "icons" / "site-signup-qr.png",
+            "lifeboxgym.com/signup"
         )
         dashboard.action_requested.connect(self.navigate)
         self._register("dashboard", dashboard)
