@@ -16,6 +16,12 @@ production domain changes, update the canonical/Open Graph URLs in the five publ
 HTML pages, the HealthClub JSON-LD in `index.html`, and the origin in `robots.txt`
 and `sitemap.xml` together.
 
+The sitemap includes only the five public canonical pages. Keep account pages,
+private panels, API endpoints and legacy `.html` redirects out of it. Update each
+page's `lastmod` when its content, structured data or links change significantly;
+use the actual page modification date, not the sitemap generation or deployment
+date. The current dates reflect the public-page changes committed on 2026-10-04.
+
 Deploy `assets/optimized/` along with the HTML, `app.js`, `robots.txt`, and
 `sitemap.xml`. Both Django and the standalone Python server serve the crawler
 files at the site root. If Nginx serves static files directly, ensure those two
