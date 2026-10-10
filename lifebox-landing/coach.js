@@ -57,7 +57,7 @@
   function person(client) { return `<button class="person-link person-cell" data-action="client" data-id="${client.id}">${avatar(client.fullName, client.id)}<span><strong>${e(client.fullName)}</strong><small>${e(goals[client.mainGoal] || 'هدف هنوز ثبت نشده')}</small></span></button>`; }
   function renderHeader() {
     const data = state.data;
-    $('#coach-name').textContent = data.coach.fullName || 'مربی لایف‌باکس';
+    $('#coach-name').textContent = data.coach.fullName || 'مربی لایف باکس';
     $('#coach-specialty').textContent = data.coach.specialty || 'تخصص ثبت نشده';
     $('#coach-initials').textContent = initials(data.coach.fullName || 'مربی');
     $('#nav-client-count').textContent = fa(data.clients.length);

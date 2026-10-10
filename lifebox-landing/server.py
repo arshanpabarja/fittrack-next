@@ -197,7 +197,7 @@ def init_database() -> None:
                     (full_name, mobile, password_hash, role, status, plan, sessions_used, joined_at)
                 VALUES (?, ?, ?, 'admin', 'active', 'مدیریت مجموعه', 0, ?)
                 """,
-                ("مدیر لایف‌باکس", ADMIN_MOBILE, hash_password(ADMIN_PASSWORD), now_iso()),
+                ("مدیر لایف باکس", ADMIN_MOBILE, hash_password(ADMIN_PASSWORD), now_iso()),
             )
         elif ROTATE_ADMIN_PASSWORD:
             if ADMIN_PASSWORD == "LifeBox@1405":

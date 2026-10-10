@@ -292,7 +292,7 @@ class CoachPanelFlowTests(TestCase):
             data=json.dumps({
                 "fullName": "مربی آزمایشی",
                 "specialty": "افزایش قدرت",
-                "bio": "مربی رسمی لایف‌باکس",
+                "bio": "مربی رسمی لایف باکس",
             }, ensure_ascii=False),
             content_type="application/json",
         )

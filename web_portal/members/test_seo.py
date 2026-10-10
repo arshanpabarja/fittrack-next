@@ -102,8 +102,11 @@ class PublicSearchTests(SimpleTestCase):
         response = self.client.get('/')
         content = response.content.decode('utf-8')
         page = PageMetadata(content)
-        self.assertEqual(len(page.schemas), 1)
-        club = page.schemas[0]
+        self.assertEqual(len(page.schemas), 2)
+        club = next(schema for schema in page.schemas if schema['@type'] == 'HealthClub')
+        website = next(schema for schema in page.schemas if schema['@type'] == 'WebSite')
+        self.assertEqual(website['name'], 'لایف باکس')
+        self.assertEqual(website['url'], ORIGIN + '/')
         self.assertEqual(club['@type'], 'HealthClub')
         self.assertEqual(club['url'], ORIGIN + '/')
         self.assertEqual(club['telephone'], '+982144656198')

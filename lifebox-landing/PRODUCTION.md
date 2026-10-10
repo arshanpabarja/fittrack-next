@@ -13,14 +13,14 @@ then provided through the service environment as `SMS_IR_API_KEY`.
 
 The public pages use `https://lifeboxgym.com` as their canonical origin. If the
 production domain changes, update the canonical/Open Graph URLs in the five public
-HTML pages, the HealthClub JSON-LD in `index.html`, and the origin in `robots.txt`
+HTML pages, the HealthClub and WebSite JSON-LD in `index.html`, and the origin in `robots.txt`
 and `sitemap.xml` together.
 
 The sitemap includes only the five public canonical pages. Keep account pages,
 private panels, API endpoints and legacy `.html` redirects out of it. Update each
 page's `lastmod` when its content, structured data or links change significantly;
 use the actual page modification date, not the sitemap generation or deployment
-date. The current dates reflect the public-page changes committed on 2026-10-04.
+date. The current dates reflect the public-page brand spelling update on 2026-10-10.
 
 Deploy `assets/optimized/` along with the HTML, `app.js`, `robots.txt`, and
 `sitemap.xml`. Both Django and the standalone Python server serve the crawler

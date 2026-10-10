@@ -240,7 +240,7 @@
     $$('.side-nav a[href^="#"]').forEach(a=>{const active=a.getAttribute('href')===`#${selected}`;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
     const [label,title,description]=views[selected];
     $('#view-label').textContent=label;$('#view-title').textContent=title;$('#view-description').textContent=description;
-    document.title=`${label} | ${isOwnerPanel ? 'پنل مالک' : 'پنل ادمین'} لایف‌باکس`;
+    document.title=`${label} | ${isOwnerPanel ? 'پنل مالک' : 'پنل ادمین'} لایف باکس`;
     setMenu(false);drawCharts();
   }
   function setMenu(open,returnFocus=false) {
