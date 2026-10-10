@@ -76,7 +76,7 @@ class AttendanceService:
         return self.repository.summary()
 
     def auto_checkout(self):
-        return self.repository.auto_checkout(minutes=60)
+        return self.repository.auto_checkout(minutes=280)
 
     def _flush_outbox(self):
         for event in self.repository.pending_outbox():

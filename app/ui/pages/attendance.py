@@ -98,10 +98,10 @@ class CheckInSuccessDialog(QDialog):
         layout.addWidget(member)
 
         try:
-            checkout = datetime.strptime(result.occurred_at, "%Y-%m-%d %H:%M:%S") + timedelta(minutes=60)
+            checkout = datetime.strptime(result.occurred_at, "%Y-%m-%d %H:%M:%S") + timedelta(minutes=280)
             checkout_text = checkout.strftime("%H:%M")
         except (TypeError, ValueError):
-            checkout_text = "۶۰ دقیقه دیگر"
+            checkout_text = "۲۸۰ دقیقه دیگر"
         remaining = result.member.remaining_sessions
         remaining_text = "نامشخص" if remaining is None else str(remaining)
         signup_text = result.member.signup_time or "ثبت نشده"
@@ -188,7 +188,7 @@ class AttendancePage(QWidget):
         title_box = QVBoxLayout()
         title = QLabel("ورود اعضا")
         title.setObjectName("attendanceTitle")
-        subtitle = QLabel("تشخیص خودکار چهره و تخصیص کمد؛ خروج پس از ۶۰ دقیقه خودکار ثبت می‌شود.")
+        subtitle = QLabel("تشخیص خودکار چهره و تخصیص کمد؛ خروج پس از ۲۸۰ دقیقه خودکار ثبت می‌شود.")
         subtitle.setObjectName("attendanceSubtitle")
         subtitle.setWordWrap(True)
         title_box.addWidget(title)

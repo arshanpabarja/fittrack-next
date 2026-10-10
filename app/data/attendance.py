@@ -114,7 +114,7 @@ class AttendanceRepository:
             connection.commit()
         return int(row["id"]), row["locker_id"]
 
-    def auto_checkout(self, minutes=60, now=None):
+    def auto_checkout(self, minutes=280, now=None):
         now = now or datetime.now()
         cutoff = (now - timedelta(minutes=int(minutes))).strftime("%Y-%m-%d %H:%M:%S")
         timestamp = now.strftime("%Y-%m-%d %H:%M:%S")

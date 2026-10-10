@@ -4,6 +4,7 @@ import unittest
 from contextlib import closing
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 from app.data.attendance import AttendanceRepository
 from app.data.members import MembersRepository
@@ -116,13 +117,19 @@ class AttendanceTests(unittest.TestCase):
         self.assertFalse(page.has_next)
         self.assertTrue(page.items[0].checked_out_at)
 
-    def test_members_are_automatically_checked_out_after_sixty_minutes(self):
+    def test_members_are_automatically_checked_out_after_280_minutes(self):
         member = self.service.face_index.match([1, 0])
         self.attendance.check_in(member, "2026-08-12 10:00:00")
-        count = self.attendance.auto_checkout(
-            minutes=60,
-            now=datetime(2026, 8, 12, 11, 0, 1),
+        self.assertEqual(
+            self.attendance.auto_checkout(now=datetime(2026, 8, 12, 14, 39, 59)),
+            0,
         )
+        with patch("app.data.attendance.datetime") as clock:
+            clock.now.return_value = datetime(2026, 8, 12, 14, 39, 59)
+            self.assertEqual(self.service.auto_checkout(), 0)
+            self.assertEqual(self.attendance.summary(), {"inside": 1, "free_lockers": 1})
+            clock.now.return_value = datetime(2026, 8, 12, 14, 40, 0)
+            count = self.service.auto_checkout()
         self.assertEqual(count, 1)
         self.assertEqual(self.attendance.summary(), {"inside": 0, "free_lockers": 2})
 
