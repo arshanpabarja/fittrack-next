@@ -8,7 +8,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parent
 PAGES = ('index', 'coaches', 'bodybuilding', 'calisthenics', 'functional', 'login',
-         'signup', 'pending', 'dashboard', 'admin', 'admin-panel', 'coach-panel')
+         'forgot-password', 'signup', 'pending', 'dashboard', 'admin', 'admin-panel', 'coach-panel')
 ASSET_SUFFIXES = {'.png', '.jpg', '.jpeg', '.webp', '.svg', '.ttf', '.woff', '.woff2', '.mp4', '.css', '.txt'}
 
 

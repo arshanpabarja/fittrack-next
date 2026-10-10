@@ -1,7 +1,7 @@
 from django.urls import path, re_path
 from django.views.generic import RedirectView
 
-from . import views, owner, sync, coaching, member_panel
+from . import views, owner, sync, coaching, member_panel, password_reset
 
 
 urlpatterns = [
@@ -41,6 +41,7 @@ urlpatterns = [
     path("calisthenics", views.page, {"name": "calisthenics.html"}),
     path("functional", views.page, {"name": "functional.html"}),
     path("login", views.page, {"name": "login.html"}),
+    path("forgot-password", views.page, {"name": "forgot-password.html"}),
     path("signup", views.page, {"name": "signup.html"}),
     path("pending", views.page, {"name": "pending.html"}),
     path("dashboard", views.page, {"name": "dashboard.html"}),
@@ -53,6 +54,7 @@ urlpatterns = [
     path("calisthenics.html", RedirectView.as_view(url='/calisthenics', permanent=True, query_string=True)),
     path("functional.html", RedirectView.as_view(url='/functional', permanent=True, query_string=True)),
     path("login.html", RedirectView.as_view(url='/login', permanent=True, query_string=True)),
+    path("forgot-password.html", RedirectView.as_view(url='/forgot-password', permanent=True, query_string=True)),
     path("signup.html", RedirectView.as_view(url='/signup', permanent=True, query_string=True)),
     path("pending.html", RedirectView.as_view(url='/pending', permanent=True, query_string=True)),
     path("dashboard.html", RedirectView.as_view(url='/dashboard', permanent=True, query_string=True)),
@@ -67,6 +69,9 @@ urlpatterns = [
     path("api/signup/otp/send", views.signup_otp_send_api),
     path("api/signup", views.signup_api),
     path("api/login", views.login_api),
+    path("api/password-reset/send", password_reset.send),
+    path("api/password-reset/verify", password_reset.verify),
+    path("api/password-reset/complete", password_reset.complete),
     path("api/logout", views.logout_api),
     path("api/me", views.me_api),
     path("api/admin/users", views.admin_users_api),

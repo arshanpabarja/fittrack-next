@@ -118,6 +118,19 @@ class SignupOTP(models.Model):
         return self.mobile
 
 
+class PasswordResetChallenge(models.Model):
+    mobile = models.CharField(max_length=11, unique=True)
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
+    code_digest = models.CharField(max_length=64, blank=True)
+    token_digest = models.CharField(max_length=64, blank=True)
+    password_digest = models.CharField(max_length=64, blank=True)
+    expires_at = models.DateTimeField()
+    last_sent_at = models.DateTimeField()
+    window_started_at = models.DateTimeField()
+    send_count = models.PositiveSmallIntegerField(default=0)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+
+
 class CoachProfile(models.Model):
     user = models.OneToOneField(
         User,

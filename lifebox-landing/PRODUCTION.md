@@ -39,6 +39,21 @@ mode, or a reported 2G connection.
 
 ## Account deployment
 
+### SMS password recovery
+
+`/forgot-password` sends a five-digit code using the existing SMS.ir verification
+template (`SMS_IR_API_KEY` and `SMS_IR_TEMPLATE_ID`, with the `Code` parameter).
+Run migrations before deploying: `0014_password_reset_challenge` stores separate,
+hashed reset challenges. No SMS key or code is exposed in browser assets.
+Codes expire after 180 seconds. Verification issues a single-use grant lasting
+300 seconds; users enter and confirm a new password, then return to `/login`.
+Sending a new code cancels older codes and grants. Resetting a password invalidates
+existing Django login sessions and preserves the account's role and status.
+Defaults allow one send every 60 seconds, five sends per number per hour, twenty
+requests per IP per hour, and five incorrect code attempts. Override these using
+the `PASSWORD_RESET_*` settings in `web_portal/config/settings.py` if needed.
+Verify one real SMS round trip after deployment; automated tests mock SMS.ir.
+
 The website is now served by Django and shares the existing
 `database/gym_users.db` with Life Box. Django only adds its own tables; the
 legacy `users` table and its 513 current members are preserved.

@@ -62,6 +62,7 @@ async function api(path, options = {}) {
     const error = new Error(result.message || "درخواست انجام نشد.");
     error.status = response.status;
     error.field = result.field;
+    error.retryAfter = Number(response.headers.get("Retry-After")) || 0;
     throw error;
   }
   return result;
@@ -165,6 +166,9 @@ function accountDestination(user) {
 async function initLogin() {
   const form = $("#login-form");
   if (!form) return;
+  if (new URLSearchParams(window.location.search).get("reset") === "success") {
+    setFormMessage(form, "رمز عبور تغییر کرد. با رمز جدید وارد شوید.", "success");
+  }
   try {
     const current = await api("/api/me");
     window.location.replace(accountDestination(current.user));
@@ -198,6 +202,164 @@ async function initLogin() {
       setBusy(button, false);
     }
   });
+}
+
+function initPasswordReset() {
+  const form = $("#password-reset-form");
+  if (!form) return;
+  const submit = $("button[type='submit']", form);
+  const resend = $("[data-reset-resend]", form);
+  const stages = $$("[data-reset-stage]", form);
+  const labels = ["ارسال کد تأیید ←", "تأیید کد و ادامه ←", "ذخیره رمز و بازگشت به ورود ←"];
+  let stage = 0;
+  let mobile = "";
+  let resetToken = "";
+  let busy = false;
+  let retryAt = 0;
+  let timer;
+
+  const render = () => {
+    stages.forEach((section, index) => {
+      section.hidden = index !== stage;
+      $$("input, button", section).forEach((control) => { control.disabled = busy || index !== stage; });
+    });
+    $$("[data-reset-progress]").forEach((item, index) => {
+      if (index === stage) item.setAttribute("aria-current", "step");
+      else item.removeAttribute("aria-current");
+      item.classList.toggle("is-complete", index < stage);
+    });
+    const remaining = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
+    resend.disabled = busy || stage !== 1 || remaining > 0;
+    resend.textContent = remaining > 0 ? `ارسال دوباره (${toFa(remaining)} ثانیه)` : "ارسال دوباره کد";
+    submit.disabled = busy;
+    if (!busy) submit.textContent = labels[stage];
+  };
+  const focusStage = () => $("input", stages[stage])?.focus();
+  const showError = (error) => {
+    if (error.field && form.elements[error.field] && !form.elements[error.field].disabled) {
+      setFieldError(form, error.field, error.message);
+    } else {
+      setFormMessage(form, error.message);
+      $("[data-form-message]", form).focus();
+    }
+  };
+  const startCooldown = (seconds) => {
+    retryAt = Date.now() + seconds * 1000;
+    window.clearInterval(timer);
+    timer = window.setInterval(() => {
+      render();
+      if (Date.now() >= retryAt) window.clearInterval(timer);
+    }, 1000);
+  };
+  const restart = () => {
+    if (busy) return;
+    stage = 0;
+    resetToken = "";
+    form.elements.otpCode.value = "";
+    form.elements.password.value = "";
+    form.elements.confirmPassword.value = "";
+    clearFieldErrors(form);
+    setFormMessage(form);
+    render();
+    focusStage();
+  };
+  const sendCode = async () => {
+    busy = true;
+    submit.textContent = "در حال ارسال...";
+    render();
+    let failure;
+    try {
+      const result = await api("/api/password-reset/send", { method: "POST", body: JSON.stringify({ mobile }) });
+      resetToken = "";
+      form.elements.otpCode.value = "";
+      $("[data-reset-destination]", form).textContent = `شماره دریافت کد: ${toFa(mobile)}`;
+      $("[data-reset-status]", form).textContent = result.message;
+      $("[data-reset-code-help]", form).textContent = `کد پنج‌رقمی تا ${toFa(result.expiresIn)} ثانیه معتبر است.`;
+      stage = 1;
+      startCooldown(result.resendAfter);
+    } catch (error) {
+      failure = error;
+      if (error.retryAfter) startCooldown(error.retryAfter);
+    } finally {
+      busy = false;
+      render();
+    }
+    if (failure) showError(failure);
+    else focusStage();
+  };
+  $("[data-reset-back]", form).addEventListener("click", restart);
+  $("[data-reset-restart]", form).addEventListener("click", restart);
+  resend.addEventListener("click", () => {
+    if (busy || Date.now() < retryAt) return;
+    clearFieldErrors(form);
+    setFormMessage(form);
+    sendCode();
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (busy) return;
+    clearFieldErrors(form);
+    setFormMessage(form);
+    if (stage === 0) {
+      mobile = normalizeDigits(form.elements.mobile.value);
+      form.elements.mobile.value = mobile;
+      if (!/^09\d{9}$/.test(mobile)) {
+        setFieldError(form, "mobile", "شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.");
+        return;
+      }
+      await sendCode();
+      return;
+    }
+    const otpCode = normalizeDigits(form.elements.otpCode.value);
+    const password = form.elements.password.value;
+    const confirmPassword = form.elements.confirmPassword.value;
+    if (stage === 1 && !/^\d{5}$/.test(otpCode)) {
+      setFieldError(form, "otpCode", "کد تأیید پنج‌رقمی را وارد کنید.");
+      return;
+    }
+    if (stage === 2) {
+      if (password.length < 10 || password.length > 128 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+        setFieldError(form, "password", "۱۰ تا ۱۲۸ کاراکتر و ترکیبی از حرف و عدد انتخاب کنید.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setFieldError(form, "confirmPassword", "تکرار رمز عبور با رمز جدید یکسان نیست.");
+        return;
+      }
+    }
+    busy = true;
+    submit.textContent = "در حال بررسی...";
+    render();
+    let failure;
+    try {
+      if (stage === 1) {
+        const result = await api("/api/password-reset/verify", { method: "POST", body: JSON.stringify({ mobile, otpCode }) });
+        resetToken = result.resetToken;
+        $("[data-reset-password-help]", form).textContent = `شماره تأیید شد. تا ${toFa(result.expiresIn)} ثانیه رمز جدید را دو بار وارد کنید.`;
+        stage = 2;
+        window.clearInterval(timer);
+      } else {
+        await api("/api/password-reset/complete", { method: "POST", body: JSON.stringify({ mobile, resetToken, password, confirmPassword }) });
+        resetToken = "";
+        form.reset();
+        window.location.replace("/login?reset=success");
+      }
+    } catch (error) {
+      failure = error;
+      if (error.status === 403 && stage === 2) {
+        stage = 0;
+        resetToken = "";
+        form.elements.password.value = "";
+        form.elements.confirmPassword.value = "";
+      }
+    } finally {
+      busy = false;
+      render();
+    }
+    if (failure) showError(failure);
+    else focusStage();
+  });
+  render();
 }
 
 function initSignup() {
@@ -844,6 +1006,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initAuthLink();
   initPasswordToggles();
   initLogin();
+  initPasswordReset();
   initSignup();
   initLogout();
   initDashboard();

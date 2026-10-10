@@ -33,6 +33,7 @@ PUBLIC_PAGES = {
     "calisthenics.html",
     "functional.html",
     "login.html",
+    "forgot-password.html",
     "signup.html",
     "pending.html",
     "dashboard.html",
@@ -78,7 +79,7 @@ def _ip_otp_limit_reached(request):
         return False
 
 
-def _send_signup_otp(mobile, code):
+def _send_otp_sms(mobile, code):
     if not settings.SMS_IR_API_KEY:
         raise RuntimeError("SMS_IR_API_KEY is not configured")
     body = json.dumps(
@@ -302,7 +303,7 @@ def signup_otp_send_api(request):
             window_started_at=now,
         )
     try:
-        _send_signup_otp(mobile, code)
+        _send_otp_sms(mobile, code)
     except RuntimeError:
         SignupOTP.objects.filter(pk=challenge.pk, code_digest=digest).update(code_digest="", expires_at=now)
         return error("ارسال پیامک انجام نشد؛ کمی بعد دوباره تلاش کنید.", status=502, field="otpCode")
