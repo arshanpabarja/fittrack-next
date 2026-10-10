@@ -26,7 +26,6 @@ class Sidebar(QFrame):
     ITEMS = (
         ("dashboard", "صفحه عمومی", "⌂"),
         ("admin", "نمای کلی مدیریت", "▦"),
-        ("pending", "پذیرش سایت", "↻"),
         ("walk_in", "ثبت‌نام حضوری", "+"),
         ("members", "اعضا", "◉"),
         ("coaches", "مربی‌ها", "◇"),

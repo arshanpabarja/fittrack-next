@@ -228,7 +228,7 @@ class PendingApplicationsPage(QWidget):
         layout.setSpacing(16)
         header = QHBoxLayout()
         title_box = QVBoxLayout()
-        title = QLabel("پذیرش کاربر از سایت")
+        title = QLabel("پذیرش آنلاین")
         title.setObjectName("pageTitle")
         subtitle = QLabel("تشخیص خودکار چهره، پرداخت و فعال‌سازی نهایی حساب‌های در انتظار")
         subtitle.setObjectName("pageSubtitle")

@@ -99,22 +99,12 @@ class DashboardPage(QWidget):
         layout.addLayout(secondary)
         layout.addStretch(1)
 
-        footer_frame = QFrame()
-        footer_frame.setObjectName("kioskFooter")
-        footer = QHBoxLayout(footer_frame)
-        footer.setContentsMargins(20, 14, 20, 14)
-        footer.setSpacing(12)
-        help_text = QLabel("هر روز، قوی‌تر از دیروز  •  برای دریافت کمک به پذیرش مراجعه کنید.")
-        help_text.setObjectName("kioskHelpText")
-        help_text.setWordWrap(True)
         manager = QPushButton("ورود مدیریت")
         manager.setObjectName("kioskManagerButton")
         manager.setCursor(Qt.CursorShape.PointingHandCursor)
         manager.setAccessibleName("ورود به بخش مدیریت")
         manager.clicked.connect(lambda: self.action_requested.emit("admin"))
-        footer.addWidget(help_text, 1)
-        footer.insertWidget(0, manager)
-        layout.addWidget(footer_frame)
+        layout.addWidget(manager, alignment=Qt.AlignmentFlag.AlignLeft)
 
         outer.addWidget(shell)
         outer.addStretch(4)
@@ -326,13 +316,15 @@ class DashboardPage(QWidget):
         hint = QLabel("دوربین موبایل را روبه‌روی QR بگیرید و ثبت‌نام را در گوشی ادامه دهید.")
         hint.setObjectName("kioskQrHint")
         hint.setWordWrap(True)
-        network = QLabel("موبایل باید به شبکه باشگاه متصل باشد")
-        network.setObjectName("kioskQrNetwork")
-        network.setWordWrap(True)
+        reception = QPushButton("پذیرش آنلاین")
+        reception.setObjectName("kioskOnlineReceptionButton")
+        reception.setCursor(Qt.CursorShape.PointingHandCursor)
+        reception.setAccessibleName("پذیرش اعضای ثبت‌نام‌شده آنلاین")
+        reception.clicked.connect(lambda: self.action_requested.emit("pending"))
         copy.addWidget(eyebrow)
         copy.addWidget(title)
         copy.addWidget(hint)
-        for label in (eyebrow, title, hint, network):
+        for label in (eyebrow, title, hint):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         qr = QLabel()
@@ -355,7 +347,7 @@ class DashboardPage(QWidget):
 
         card_layout.addLayout(copy)
         card_layout.addWidget(qr, alignment=Qt.AlignmentFlag.AlignCenter)
-        card_layout.addWidget(network)
+        card_layout.addWidget(reception)
         self._add_shadow(card, blur=28, y=9, alpha=34)
         return card
 

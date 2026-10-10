@@ -19,8 +19,8 @@ from app.ui.workers import TaskWorker
 
 
 class MainWindow(QMainWindow):
-    PROTECTED_PAGES = {"members", "pending", "coaches", "reports", "settings", "admin"}
-    PUBLIC_PAGES = {"dashboard", "attendance", "walk_in", "manager_login"}
+    PROTECTED_PAGES = {"members", "coaches", "reports", "settings", "admin"}
+    PUBLIC_PAGES = {"dashboard", "attendance", "walk_in", "pending", "manager_login"}
 
     def __init__(self, settings, services):
         super().__init__()

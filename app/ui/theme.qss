@@ -155,21 +155,12 @@ QFrame#kioskQrCard { background: #171714; border: 1px solid #171714; border-radi
 QLabel#kioskQrEyebrow { color: #f2cf00; font-size: 12px; font-weight: 900; }
 QLabel#kioskQrTitle { color: #ffffff; font-size: 32px; font-weight: 900; }
 QLabel#kioskQrHint { color: #d2d2ca; font-size: 14px; }
-QLabel#kioskQrNetwork {
-    padding: 8px 10px;
-    background: #2c2c28;
-    color: #f1f1ea;
-    border-radius: 9px;
-    font-size: 11px;
+QPushButton#kioskOnlineReceptionButton {
+    min-height: 36px;
+    font-size: 15px;
 }
+QPushButton#kioskOnlineReceptionButton:focus { border: 3px solid #ffffff; }
 QLabel#kioskQrImage { background: #ffffff; border: 6px solid #f2cf00; border-radius: 16px; }
-QLabel#kioskHelpText { color: #77776f; font-size: 12px; }
-QFrame#kioskFooter {
-    min-height: 58px;
-    background: #ffffff;
-    border: 1px solid #dfdfd8;
-    border-radius: 14px;
-}
 QPushButton#kioskManagerButton {
     min-width: 150px;
     min-height: 36px;
