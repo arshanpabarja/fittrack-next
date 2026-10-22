@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import ssl
 import unittest
 from unittest.mock import Mock, patch
@@ -28,9 +29,19 @@ class ApiTlsTests(unittest.TestCase):
                 client._request('GET', '/api/health')
             self.assertEqual(open_url.call_count, 1)
 
-    def test_system_trust_is_augmented_with_packaged_roots(self):
+    @patch('app.integrations.django_api.Path.is_file', return_value=False)
+    def test_packaged_roots_are_loaded_without_missing_system_paths(self, _is_file):
         with patch('app.integrations.django_api.ssl.create_default_context') as create_context:
             with patch('app.integrations.django_api.certifi.where', return_value='ca-bundle.pem'):
                 DjangoApiClient('https://example.invalid', 'test-token')
-        create_context.assert_called_once_with()
-        create_context.return_value.load_verify_locations.assert_called_once_with(cafile='ca-bundle.pem')
+        create_context.assert_called_once_with(cafile='ca-bundle.pem')
+        create_context.return_value.load_verify_locations.assert_not_called()
+
+    def test_standalone_bundle_is_preferred_over_python_package_path(self):
+        expected = str(Path(__file__).resolve().parents[1] / 'certifi' / 'cacert.pem')
+        with patch('app.integrations.django_api.Path.is_file', return_value=True):
+            with patch('app.integrations.django_api.ssl.create_default_context') as create_context:
+                with patch('app.integrations.django_api.certifi.where') as certifi_where:
+                    DjangoApiClient('https://example.invalid', 'test-token')
+        create_context.assert_called_once_with(cafile=expected)
+        certifi_where.assert_not_called()

@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt, QRegularExpression, QThreadPool, QTimer, pyqtSignal
+from PyQt6.QtCore import QEvent, Qt, QRegularExpression, QThreadPool, QTimer, pyqtSignal
 from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -22,6 +22,22 @@ from PyQt6.QtWidgets import (
 
 from app.ui.face_capture import FaceCaptureDialog
 from app.ui.workers import TaskWorker
+
+
+class KeyboardSpinBox(QSpinBox):
+    """Select the displayed value when focused so typing replaces it."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.lineEdit().installEventFilter(self)
+
+    def eventFilter(self, watched, event):
+        if watched is self.lineEdit() and event.type() in {
+            QEvent.Type.FocusIn,
+            QEvent.Type.MouseButtonPress,
+        }:
+            QTimer.singleShot(0, self.lineEdit().selectAll)
+        return super().eventFilter(watched, event)
 
 
 class WalkInSignupPage(QWidget):
@@ -114,9 +130,11 @@ class WalkInSignupPage(QWidget):
             field.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.father_name = QLineEdit()
         self.certificate_no = QLineEdit()
-        self.age = QSpinBox()
+        self.age = KeyboardSpinBox()
         self.age.setRange(0, 120)
         self.age.setSpecialValueText("نامشخص")
+        self.age.setToolTip("سن را با کیبورد وارد کنید یا از دکمه‌های بالا و پایین استفاده کنید.")
+        self.age.setInputMethodHints(Qt.InputMethodHint.ImhDigitsOnly)
         self.gender = QComboBox()
         self.gender.addItems(["مرد", "زن"])
         self.address = QTextEdit()

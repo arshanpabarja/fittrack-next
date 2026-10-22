@@ -82,7 +82,22 @@ class MemberDialog(QDialog):
         self.mobile = self._line(member.mobile)
         self.national_id = self._line(member.national_id)
         self.certificate_no = self._line(member.certificate_no)
-        self.plan = self._line(member.plan)
+        self.plan = QComboBox()
+        self.plan.setMinimumHeight(46)
+        self.plan.setMaxVisibleItems(12)
+        plan_names = []
+        if member.plan:
+            plan_names.append(member.plan)
+        for plan in self.plans:
+            name = str(getattr(plan, "name", "")).strip()
+            if name and getattr(plan, "is_active", True) and name not in plan_names:
+                plan_names.append(name)
+        self.plan.addItems(plan_names)
+        if member.plan:
+            self.plan.setCurrentText(member.plan)
+        if not plan_names:
+            self.plan.addItem("پلن فعالی تعریف نشده است")
+            self.plan.setEnabled(False)
         self.original_signup_time = normalize_membership_datetime(member.signup_time)
         self.signup_time = QLineEdit(self.original_signup_time)
         self.signup_time.setPlaceholderText("1405/06/30")
@@ -91,8 +106,8 @@ class MemberDialog(QDialog):
         self.remaining_sessions = QSpinBox()
         self.remaining_sessions.setSuffix(" جلسه")
         self.remaining_sessions.setToolTip("عدد منفی یعنی جلسات استفاده‌شده در مهلت تمدید.")
-        self.plan.textChanged.connect(self._update_remaining_sessions)
-        self._update_remaining_sessions(self.plan.text())
+        self.plan.currentTextChanged.connect(self._update_remaining_sessions)
+        self._update_remaining_sessions(self.plan.currentText() if self.plan.isEnabled() else "")
         self.age = QSpinBox()
         self.age.setRange(0, 120)
         self.age.setSpecialValueText("نامشخص")
@@ -201,7 +216,7 @@ class MemberDialog(QDialog):
             "certificate_no": self.certificate_no.text(),
             "age": self.age.value() or None,
             "gender": self.gender.currentText(),
-            "plan": self.plan.text(),
+            "plan": self.plan.currentText() if self.plan.isEnabled() else self.member.plan,
             "debt": self.debt.value(),
             "payment": self.payment.value(),
             "address": self.address.toPlainText().strip(),
@@ -210,7 +225,7 @@ class MemberDialog(QDialog):
             values["signup_time"] = self.signup_time.text()
         if self.remaining_sessions.isEnabled() and (
             self.remaining_sessions.value() != self.member.remaining_sessions
-            or self.plan.text() != self.member.plan
+            or (self.plan.currentText() if self.plan.isEnabled() else self.member.plan) != self.member.plan
         ):
             values["remaining_sessions"] = self.remaining_sessions.value()
         self.save_requested.emit(values)

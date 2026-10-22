@@ -1,6 +1,7 @@
 import json
 import ssl
 import certifi
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -13,15 +14,23 @@ class DjangoApiError(FitTrackError):
     pass
 
 
+def _ca_bundle_path():
+    bundled = Path(__file__).resolve().parents[2] / "certifi" / "cacert.pem"
+    if bundled.is_file():
+        return str(bundled)
+    return certifi.where()
+
+
 class DjangoApiClient:
     def __init__(self, base_url, token, timeout=6):
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.timeout = timeout
-        # Keep system trust (including managed Windows roots) and add Mozilla's
-        # current CA bundle for computers whose Windows root store is outdated.
-        self.ssl_context = ssl.create_default_context()
-        self.ssl_context.load_verify_locations(cafile=certifi.where())
+        # Pass the packaged CA bundle directly. In a standalone Windows build,
+        # create_default_context() may otherwise try a Python installation path
+        # that does not exist on the customer's computer before certifi can be
+        # loaded.
+        self.ssl_context = ssl.create_default_context(cafile=_ca_bundle_path())
 
     def _request(self, method, path, payload=None):
         body = None

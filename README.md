@@ -5,6 +5,10 @@
 
 ## اجرای برنامه
 
+برنامه در اولین اجرا روی هر سیستم، رمز ثابت صاحب برنامه را می‌خواهد؛ در اجراهای
+بعدی دوباره رمز نمی‌پرسد. رمز را با `set-app-password.cmd` تعیین کنید.
+راهنمای ساخت و تحویل در [DESKTOP_ACTIVATION.md](DESKTOP_ACTIVATION.md) است.
+
 ```powershell
 cd "C:\Users\Arshan\Desktop\FitTrack Next"
 .\.venv\Scripts\python.exe launch.py
@@ -29,6 +33,11 @@ cd "C:\Users\Arshan\Desktop\FitTrack Next"
 - هیچ کوئری سنگینی روی ترد رابط کاربری اجرا نمی‌شود.
 
 ## انتقال به کامپیوتر دیگر
+
+برای تحویل برنامه به مشتری با قفل فعال‌سازی، از بستهٔ کامپایل‌شده استفاده کنید؛
+راهنمای ساخت و تعیین رمز ثابت برنامه در
+[DESKTOP_ACTIVATION.md](DESKTOP_ACTIVATION.md) است. مراحل clone زیر برای محیط
+توسعه هستند و سورس پروژه را نباید به مشتری بدهید.
 
 روی ویندوز Python 3.12 نسخه ۶۴ بیتی و Git نصب کنید، سپس:
 

@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtGui import QFont, QFontDatabase
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QMessageBox
 
 from app.core.config import load_settings
 from app.core.logging import configure_logging
@@ -30,6 +30,7 @@ from app.services.walk_in import WalkInSignupService
 from app.services.plans import PlansService
 from app.services.cloud_sync import CloudSyncService
 from app.ui.main_window import MainWindow, Services
+from app.ui.activation import ensure_activation
 
 
 def _exception_hook(exc_type, exc_value, exc_traceback):
@@ -109,14 +110,13 @@ def build_services(settings):
 
 
 def run():
-    settings = load_settings()
-    configure_logging(settings.log_dir)
     sys.excepthook = _exception_hook
     app = QApplication(sys.argv)
     app.setApplicationName("Life Box")
     app.setOrganizationName("LifeBox Gym")
 
-    font_path = settings.project_root / "Vazirmatn-Bold.ttf"
+    package_root = Path(__file__).resolve().parent.parent
+    font_path = package_root / "Vazirmatn-Bold.ttf"
     if font_path.exists():
         font_id = QFontDatabase.addApplicationFont(str(font_path))
         families = QFontDatabase.applicationFontFamilies(font_id)
@@ -125,6 +125,16 @@ def run():
 
     theme_path = Path(__file__).resolve().parent / "ui" / "theme.qss"
     app.setStyleSheet(theme_path.read_text(encoding="utf-8"))
+    if not ensure_activation(package_root):
+        return 1
+    if "--check-desktop-release" in sys.argv:
+        from app.core.release_check import run_release_check
+        return run_release_check(app, package_root)
+    settings = load_settings()
+    configure_logging(settings.log_dir)
+    if not settings.data_dir.is_dir():
+        QMessageBox.critical(None, "لایف‌باکس", f"پوشهٔ دیتابیس باشگاه پیدا نشد:\n{settings.data_dir}")
+        return 1
     window = MainWindow(settings, build_services(settings))
     if os.getenv("FITTRACK_WINDOWED", "").strip().lower() in {"1", "true", "yes"}:
         window.show()

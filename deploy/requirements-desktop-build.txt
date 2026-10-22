@@ -1,0 +1,4 @@
+# Install with the same Python used for requirements.txt.
+Nuitka==4.3
+ordered-set>=4.1,<5
+zstandard>=0.23,<1

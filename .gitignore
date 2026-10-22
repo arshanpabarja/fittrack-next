@@ -23,8 +23,10 @@ lifebox-landing/data/
 
 # Generated output
 web_portal/staticfiles/
-dist/
+dist/*
+!dist/lifebox-desktop.zip
 build/
+nuitka-crash-report.xml
 *.log
 
 # Local launchers and operating-system metadata
@@ -34,3 +36,7 @@ Thumbs.db
 
 # Local installation backups
 /backups/
+
+# Owner-only activation key and exported licenses
+.license-owner/
+*.lic
