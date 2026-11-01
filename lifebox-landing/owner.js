@@ -8,6 +8,11 @@
   let memberFilter = 'all', followupFilter = 'expiring';
   const html = escapeHtml;
   const number = value => value == null ? '—' : new Intl.NumberFormat('fa-IR').format(value);
+  const currentPaymentMonth = () => {
+    const parts = new Intl.DateTimeFormat('en-u-ca-persian',{year:'numeric',month:'2-digit',timeZone:'Asia/Tehran'}).formatToParts(new Date());
+    return `${parts.find(part => part.type === 'year').value}-${parts.find(part => part.type === 'month').value}`;
+  };
+  const paymentMonthLabel = month => `${['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'][Number(month.slice(5)) - 1]} ${new Intl.NumberFormat('fa-IR',{useGrouping:false}).format(Number(month.slice(0,4)))}`;
   const clock = value => new Date(value).toLocaleTimeString('fa-IR', {timeZone:'Asia/Tehran', hour:'2-digit', minute:'2-digit'});
   const stamp = value => value ? `${formatDate(value)} · ${toFa((value.split('T')[1] || value.split(' ')[1] || '').slice(0,5))}` : '—';
   const empty = (cols, message) => `<tr><td colspan="${cols}" class="empty-state">${html(message)}</td></tr>`;
@@ -99,6 +104,16 @@
     $('#attendance-inside').textContent = m.inside == null ? 'اطلاعات در دسترس نیست' : `${number(m.inside)} نفر در باشگاه`;
     value('#payment-today',m.todayPayments); value('#payment-month',m.monthPayments); value('#payment-debt',m.debt);
     $('#payment-debt-count').textContent = `${number(m.debtMembers)} عضو دارای بدهی`;
+    const monthSelect = $('#payment-month-select');
+    if (monthSelect) {
+      const selectedMonth = monthSelect.value || currentPaymentMonth();
+      const months = [...new Set([selectedMonth, ...(overview.paymentMonths || []).map(item => item.month)])].sort().reverse();
+      monthSelect.innerHTML = months.map(month => `<option value="${html(month)}">${html(paymentMonthLabel(month))}</option>`).join('');
+      monthSelect.value = months.includes(selectedMonth) ? selectedMonth : months[0];
+      const monthTotal = (overview.paymentMonths || []).find(item => item.month === monthSelect.value)?.total ?? 0;
+      $('#payment-selected-total').textContent = overview.paymentsAvailable ? number(monthTotal) : '—';
+      $('#payment-selected-label').textContent = `${paymentMonthLabel(monthSelect.value)} · تومان`;
+    }
     const attention = members.filter(m => matches(m,'attention')).length;
     $('#attention-title').textContent = attention ? `${number(attention)} عضو به پیگیری شما نیاز دارند` : 'همه‌چیز برای ادامه روز آماده است';
     $('#attention-description').textContent = `${number(m.expired)} عضویت پایان‌یافته · ${number(m.expiring)} عضویت رو به پایان · ${number(m.debtMembers)} عضو دارای بدهی${m.unknown ? ` · ${number(m.unknown)} تاریخ نامشخص` : ''}`;
@@ -128,7 +143,9 @@
     try {
       const period = $('#activity-period').value;
       const search = $('#activity-search').value.trim();
-      const [directory,catalog,activity,insights] = await Promise.all([api(`${apiRoot}/members`),isOwnerPanel ? api(`${apiRoot}/plans`) : Promise.resolve({plans:[]}),api(`${apiRoot}/activity?${new URLSearchParams({period,search})}`),api(`${apiRoot}/overview`)]);
+      const paymentMonth = isOwnerPanel ? ($('#payment-month-select')?.value || currentPaymentMonth()) : '';
+      const overviewQuery = paymentMonth ? `?${new URLSearchParams({payment_month:paymentMonth})}` : '';
+      const [directory,catalog,activity,insights] = await Promise.all([api(`${apiRoot}/members`),isOwnerPanel ? api(`${apiRoot}/plans`) : Promise.resolve({plans:[]}),api(`${apiRoot}/activity?${new URLSearchParams({period,search})}`),api(`${apiRoot}/overview${overviewQuery}`)]);
       remoteSync = Boolean(directory.remoteSync); overview = insights;
       const details = new Map(insights.members.map(m => [m.key,m]));
       members = directory.members.map(m => ({...m,...details.get(m.key)}));
@@ -300,6 +317,7 @@
     $('#previous-members').addEventListener('click',()=>{memberPage--;renderMembers();});
     $('#next-members').addEventListener('click',()=>{memberPage++;renderMembers();});
     $('#refresh-owner').addEventListener('click',refresh);$('#activity-period').addEventListener('change',refresh);
+    $('#payment-month-select')?.addEventListener('change',refresh);
     $('#activity-search').addEventListener('input',()=>{clearTimeout(activitySearchTimer);activitySearchTimer=setTimeout(refresh,300);});
     $('#attendance-previous').addEventListener('click',()=>openAttendance(attendanceMember.id,attendanceMember.page-1));
     $('#attendance-next').addEventListener('click',()=>openAttendance(attendanceMember.id,attendanceMember.page+1));
@@ -330,7 +348,7 @@
     });
     const resizeObserver=new ResizeObserver(()=>{if(window.innerWidth>760 && $('#owner-sidebar').classList.contains('is-open'))setMenu(false);drawCharts();});resizeObserver.observe($('#owner-content'));
     $('#export-members').addEventListener('click',()=>exportCsv([['نام','نام خانوادگی','موبایل','پلن','وضعیت عضویت','بدهی',...(isOwnerPanel ? ['پرداخت'] : [])],...visibleMembers().map(m=>[m.firstName,m.lastName,m.mobile,m.plan,labels[m.membershipStatus],m.debt,...(isOwnerPanel ? [m.payment] : [])])],'lifebox-members.csv'));
-    $('#export-payments').addEventListener('click',()=>exportCsv([['عضو','پلن','مبلغ','تاریخ','مرجع پرداخت'],...overview.payments.map(p=>[p.name,p.plan,p.amount,p.at,p.reference])],'lifebox-renewal-payments.csv'));
+    $('#export-payments').addEventListener('click',()=>exportCsv([['عضو','پلن','مبلغ','تاریخ','مرجع پرداخت'],...overview.payments.map(p=>[p.name,p.plan,p.amount,p.at,p.reference])],`lifebox-renewal-payments-${$('#payment-month-select')?.value || 'all'}.csv`));
     await document.fonts.ready;await refresh();
     setInterval(()=>{if(!document.hidden && !$('dialog[open]'))refresh();},30000);
   });

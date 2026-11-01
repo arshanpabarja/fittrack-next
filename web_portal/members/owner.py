@@ -104,7 +104,11 @@ def members(request):
 @require_http_methods(['GET'])
 def overview(request):
     from .insights import build_overview
-    return JsonResponse(build_overview(member_rows(), include_financial_totals=is_owner(request.user)))
+    return JsonResponse(build_overview(
+        member_rows(),
+        include_financial_totals=is_owner(request.user),
+        selected_payment_month=request.GET.get('payment_month', ''),
+    ))
 
 
 @management_only

@@ -1253,6 +1253,25 @@
   font-variant-numeric:tabular-nums;
 }
 
+.payment-month-filter {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:0 0 12px;
+  color:var(--muted);
+  font-size:11px;
+}
+
+#payment-month-select {
+  min-width:170px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  color:var(--text);
+  font:inherit;
+  padding:8px 12px;
+  border-radius:8px;
+}
+
 #activity-period, #attendance-period {
   background:var(--surface);
   border:1px solid var(--border);

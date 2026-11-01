@@ -30,6 +30,11 @@ def calendar_date(value):
         return None
 
 
+def jalali_month_key(value):
+    year, month, _ = gregorian_to_jalali(value.year, value.month, value.day)
+    return f'{year:04d}-{month:02d}'
+
+
 def records(kind):
     if settings.FITTRACK_REMOTE_SYNC:
         cursor = GymSyncCursor.objects.first()
@@ -47,7 +52,7 @@ def records(kind):
         return [], False
 
 
-def build_overview(directory, *, include_financial_totals=True):
+def build_overview(directory, *, include_financial_totals=True, selected_payment_month=None):
     today = timezone.localdate()
     now = datetime.combine(today, timezone.localtime().time())
     month_start = today.replace(day=1)
@@ -109,6 +114,7 @@ def build_overview(directory, *, include_financial_totals=True):
 
     names = {m['gymId']: m for m in directory if m['gymId']}
     payment_daily = Counter()
+    payment_monthly = Counter()
     payments = []
     for renewal in renewals:
         # SQLite CURRENT_TIMESTAMP is UTC; synchronized rows retain that format.
@@ -120,8 +126,10 @@ def build_overview(directory, *, include_financial_totals=True):
         except (ValueError, KeyError, TypeError):
             continue
         amount = max(0, int(renewal.get('paid_amount') or 0))
+        month_key = jalali_month_key(at)
         if include_financial_totals:
             payment_daily[at.date().isoformat()] += amount
+            payment_monthly[month_key] += amount
         member = names.get(renewal.get('member_id'), {})
         payments.append(dict(memberKey=member.get('key'), name=(member.get('firstName', '')+' '+member.get('lastName', '')).strip() or 'عضو پیشین',
                              amount=amount, plan=renewal.get('new_plan', ''), reference=renewal.get('payment_reference', ''), at=at.isoformat()))
@@ -130,7 +138,19 @@ def build_overview(directory, *, include_financial_totals=True):
         metrics['monthPayments'] = sum(amount for day, amount in payment_daily.items() if month_start.isoformat() <= day <= today.isoformat()) if payments_available else None
     chart_start = today - timedelta(days=29)
     days = [chart_start + timedelta(days=i) for i in range(30)]
-    return dict(ok=True, metrics=metrics, members=details, payments=sorted(payments, key=lambda p: p['at'], reverse=True)[:500],
+    payments.sort(key=lambda p: p['at'], reverse=True)
+    valid_payment_month = (
+        len(selected_payment_month) == 7 and selected_payment_month[:4].isdigit()
+        and selected_payment_month[4] == '-' and selected_payment_month[5:].isdigit()
+        and 1 <= int(selected_payment_month[5:]) <= 12
+    ) if selected_payment_month else False
+    if valid_payment_month:
+        payments = [payment for payment in payments
+                    if jalali_month_key(datetime.fromisoformat(payment['at'])) == selected_payment_month]
+    else:
+        payments = payments[:500]
+    return dict(ok=True, metrics=metrics, members=details, payments=payments,
+                paymentMonths=[dict(month=month, total=total) for month, total in sorted(payment_monthly.items(), reverse=True)] if include_financial_totals else [],
                 series=[dict(date=day.isoformat(), **({'payments': payment_daily[day.isoformat()] if payments_available else None} if include_financial_totals else {}),
                              attendance=attendance_daily[day.isoformat()] if attendance_available else None) for day in days],
                 hours=[dict(hour=hour, count=hours[hour]) for hour in range(6, 24)],
