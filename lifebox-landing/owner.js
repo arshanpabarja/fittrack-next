@@ -8,11 +8,6 @@
   let memberFilter = 'all', followupFilter = 'expiring';
   const html = escapeHtml;
   const number = value => value == null ? '—' : new Intl.NumberFormat('fa-IR').format(value);
-  const currentPaymentMonth = () => {
-    const parts = new Intl.DateTimeFormat('en-u-ca-persian',{year:'numeric',month:'2-digit',timeZone:'Asia/Tehran'}).formatToParts(new Date());
-    return `${parts.find(part => part.type === 'year').value}-${parts.find(part => part.type === 'month').value}`;
-  };
-  const paymentMonthLabel = month => `${['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'][Number(month.slice(5)) - 1]} ${new Intl.NumberFormat('fa-IR',{useGrouping:false}).format(Number(month.slice(0,4)))}`;
   const paymentDateValue = selector => {
     const match = normalizeDigits($(selector)?.value || '').trim().replace(/[._]/g,'/').replaceAll('-','/').match(/^(1[234]\d{2})\/(\d{1,2})\/(\d{1,2})$/);
     return match ? `${match[1]}/${match[2].padStart(2,'0')}/${match[3].padStart(2,'0')}` : normalizeDigits($(selector)?.value || '').trim().replace(/[._]/g,'/').replaceAll('-','/');
@@ -114,13 +109,11 @@
     $('#attendance-inside').textContent = m.inside == null ? 'اطلاعات در دسترس نیست' : `${number(m.inside)} نفر در باشگاه`;
     value('#payment-today',m.todayPayments); value('#payment-month',m.monthPayments); value('#payment-debt',m.debt);
     $('#payment-debt-count').textContent = `${number(m.debtMembers)} عضو دارای بدهی`;
-    const selectedMonth = currentPaymentMonth();
-    const monthTotal = (overview.paymentMonths || []).find(item => item.month === selectedMonth)?.total ?? 0;
     const rangeFrom = paymentDateRange?.from || '', rangeTo = paymentDateRange?.to || '';
     const rangeActive = Boolean(paymentDateRange);
     const rangeLabel = `${rangeFrom ? formatDate(rangeFrom) : 'بدون حد شروع'} تا ${rangeTo ? formatDate(rangeTo) : 'بدون حد پایان'}`;
-    $('#payment-selected-total').textContent = overview.paymentsAvailable ? number(rangeActive ? overview.paymentRangeTotal : monthTotal) : '—';
-    $('#payment-selected-label').textContent = `${rangeActive ? rangeLabel : paymentMonthLabel(selectedMonth)} · تومان`;
+    $('#payment-selected-total').textContent = overview.paymentsAvailable ? number(rangeActive ? overview.paymentRangeTotal : overview.paymentTotal) : '—';
+    $('#payment-selected-label').textContent = `${rangeActive ? rangeLabel : 'همهٔ پرداخت‌ها'} · تومان`;
     const attention = members.filter(m => matches(m,'attention')).length;
     $('#attention-title').textContent = attention ? `${number(attention)} عضو به پیگیری شما نیاز دارند` : 'همه‌چیز برای ادامه روز آماده است';
     $('#attention-description').textContent = `${number(m.expired)} عضویت پایان‌یافته · ${number(m.expiring)} عضویت رو به پایان · ${number(m.debtMembers)} عضو دارای بدهی${m.unknown ? ` · ${number(m.unknown)} تاریخ نامشخص` : ''}`;
@@ -150,9 +143,7 @@
     try {
       const period = $('#activity-period').value;
       const search = $('#activity-search').value.trim();
-      const paymentMonth = isOwnerPanel ? currentPaymentMonth() : '';
       const query = new URLSearchParams();
-      if (paymentMonth) query.set('payment_month',paymentMonth);
       if (paymentDateRange?.from) query.set('payment_from',paymentDateRange.from.replaceAll('/','-'));
       if (paymentDateRange?.to) query.set('payment_to',paymentDateRange.to.replaceAll('/','-'));
       const overviewQuery = query.size ? `?${query}` : '';
@@ -370,7 +361,7 @@
     $('#export-members').addEventListener('click',()=>exportCsv([['نام','نام خانوادگی','موبایل','پلن','وضعیت عضویت','بدهی',...(isOwnerPanel ? ['پرداخت'] : [])],...visibleMembers().map(m=>[m.firstName,m.lastName,m.mobile,m.plan,labels[m.membershipStatus],m.debt,...(isOwnerPanel ? [m.payment] : [])])],'lifebox-members.csv'));
     $('#export-payments').addEventListener('click',()=>{
       const rangeFrom = paymentDateRange?.from || '', rangeTo = paymentDateRange?.to || '';
-      const period = paymentDateRange ? `${rangeFrom || 'start'}-${rangeTo || 'end'}` : currentPaymentMonth();
+      const period = paymentDateRange ? `${rangeFrom || 'start'}-${rangeTo || 'end'}` : 'all';
       exportCsv([['عضو','پلن','مبلغ','تاریخ','مرجع پرداخت'],...overview.payments.map(p=>[p.name,p.plan,p.amount,p.at,p.reference])],`lifebox-renewal-payments-${period}.csv`);
     });
     await document.fonts.ready;await refresh();

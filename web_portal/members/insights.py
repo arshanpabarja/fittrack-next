@@ -144,6 +144,7 @@ def build_overview(directory, *, include_financial_totals=True, selected_payment
     range_start = calendar_date(selected_payment_from).isoformat() if selected_payment_from and calendar_date(selected_payment_from) else None
     range_end = calendar_date(selected_payment_to).isoformat() if selected_payment_to and calendar_date(selected_payment_to) else None
     payment_range_active = bool(selected_payment_from or selected_payment_to)
+    payment_total = sum(payment['amount'] for payment in payments)
     valid_payment_month = (
         len(selected_payment_month) == 7 and selected_payment_month[:4].isdigit()
         and selected_payment_month[4] == '-' and selected_payment_month[5:].isdigit()
@@ -155,15 +156,13 @@ def build_overview(directory, *, include_financial_totals=True, selected_payment
                     if (not range_start or payment['at'][:10] >= range_start)
                     and (not range_end or payment['at'][:10] <= range_end)]
         payment_range_total = sum(payment['amount'] for payment in payments)
-        payments = payments[:500]
     elif valid_payment_month:
         payments = [payment for payment in payments
                     if jalali_month_key(datetime.fromisoformat(payment['at'])) == selected_payment_month]
-    else:
-        payments = payments[:500]
     return dict(ok=True, metrics=metrics, members=details, payments=payments,
                 paymentMonths=[dict(month=month, total=total) for month, total in sorted(payment_monthly.items(), reverse=True)] if include_financial_totals else [],
                 paymentRangeTotal=payment_range_total,
+                paymentTotal=payment_total,
                 series=[dict(date=day.isoformat(), **({'payments': payment_daily[day.isoformat()] if payments_available else None} if include_financial_totals else {}),
                              attendance=attendance_daily[day.isoformat()] if attendance_available else None) for day in days],
                 hours=[dict(hour=hour, count=hours[hour]) for hour in range(6, 24)],
