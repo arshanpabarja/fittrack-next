@@ -9,8 +9,17 @@
   const html = escapeHtml;
   const number = value => value == null ? '—' : new Intl.NumberFormat('fa-IR').format(value);
   const paymentDateValue = selector => {
-    const match = normalizeDigits($(selector)?.value || '').trim().replace(/[._]/g,'/').replaceAll('-','/').match(/^(1[234]\d{2})\/(\d{1,2})\/(\d{1,2})$/);
-    return match ? `${match[1]}/${match[2].padStart(2,'0')}/${match[3].padStart(2,'0')}` : normalizeDigits($(selector)?.value || '').trim().replace(/[._]/g,'/').replaceAll('-','/');
+    const match = normalizeDigits($(selector)?.value || '').trim().replace(/[._-]/g,'/').match(/^(\d{1,2})\/(\d{1,2})\/(1[234]\d{2})$/);
+    return match ? `${match[3]}/${match[2].padStart(2,'0')}/${match[1].padStart(2,'0')}` : normalizeDigits($(selector)?.value || '').trim();
+  };
+  const formatPaymentDateInput = input => {
+    const before = normalizeDigits(input.value.slice(0,input.selectionStart ?? input.value.length)).replace(/\D/g,'').length;
+    const digits = normalizeDigits(input.value).replace(/\D/g,'').slice(0,8);
+    const formatted = digits.length > 4 ? `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`
+      : digits.length > 2 ? `${digits.slice(0,2)}/${digits.slice(2)}` : digits;
+    input.value = toFa(formatted);
+    const cursor = Math.min(formatted.length,before + (before > 4 ? 2 : before > 2 ? 1 : 0));
+    input.setSelectionRange(cursor,cursor);
   };
   const paymentDateIsValid = value => {
     const match = value.match(/^(1[234]\d{2})\/(\d{1,2})\/(\d{1,2})$/);
@@ -323,11 +332,12 @@
       event.preventDefault();
       const from = paymentDateValue('#payment-from'), to = paymentDateValue('#payment-to');
       if (!from && !to) { feedback('حداقل یکی از تاریخ‌های شروع یا پایان را وارد کنید.',true); return; }
-      if ((from && !paymentDateIsValid(from)) || (to && !paymentDateIsValid(to))) { feedback('تاریخ شمسی را به شکل سال/ماه/روز وارد کنید.',true); return; }
+      if ((from && !paymentDateIsValid(from)) || (to && !paymentDateIsValid(to))) { feedback('تاریخ شمسی را به شکل روز/ماه/سال وارد کنید.',true); return; }
       if (from && to && from.replaceAll('/','-') > to.replaceAll('/','-')) { feedback('تاریخ شروع بازه باید قبل از تاریخ پایان باشد.',true); return; }
       paymentDateRange = {from,to};
       refresh();
     });
+    ['#payment-from','#payment-to'].forEach(selector=>$(selector)?.addEventListener('input',event=>formatPaymentDateInput(event.currentTarget)));
     $('#payment-range-clear')?.addEventListener('click',()=>{ paymentDateRange=null; $('#payment-from').value=''; $('#payment-to').value=''; refresh(); });
     $('#activity-search').addEventListener('input',()=>{clearTimeout(activitySearchTimer);activitySearchTimer=setTimeout(refresh,300);});
     $('#attendance-previous').addEventListener('click',()=>openAttendance(attendanceMember.id,attendanceMember.page-1));
