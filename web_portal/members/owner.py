@@ -103,11 +103,21 @@ def members(request):
 @management_only
 @require_http_methods(['GET'])
 def overview(request):
-    from .insights import build_overview
+    from .insights import build_overview, calendar_date
+    payment_from = request.GET.get('payment_from', '')
+    payment_to = request.GET.get('payment_to', '')
+    start = calendar_date(payment_from) if payment_from else None
+    end = calendar_date(payment_to) if payment_to else None
+    if (payment_from and not start) or (payment_to and not end):
+        return JsonResponse({'ok': False, 'message': 'تاریخ بازه معتبر نیست؛ تاریخ شمسی را به شکل سال/ماه/روز وارد کنید.'}, status=400)
+    if start and end and start > end:
+        return JsonResponse({'ok': False, 'message': 'تاریخ شروع بازه باید قبل از تاریخ پایان باشد.'}, status=400)
     return JsonResponse(build_overview(
         member_rows(),
         include_financial_totals=is_owner(request.user),
         selected_payment_month=request.GET.get('payment_month', ''),
+        selected_payment_from=start.isoformat() if start else '',
+        selected_payment_to=end.isoformat() if end else '',
     ))
 
 

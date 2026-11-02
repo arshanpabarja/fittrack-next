@@ -1253,23 +1253,42 @@
   font-variant-numeric:tabular-nums;
 }
 
-.payment-month-filter {
+.payment-range-filter {
   display:flex;
   align-items:center;
-  gap:12px;
-  margin:0 0 12px;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 0 10px;
   color:var(--muted);
   font-size:11px;
 }
 
-#payment-month-select {
-  min-width:170px;
-  background:var(--surface);
+.payment-range-title {
+  color:var(--text);
+  font-weight:600;
+  margin-inline-end:4px;
+}
+
+.payment-range-filter input {
+  width:126px;
+  min-height:37px;
   border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--surface);
   color:var(--text);
   font:inherit;
-  padding:8px 12px;
-  border-radius:8px;
+  padding:8px 10px;
+}
+
+.payment-range-filter input::placeholder {
+  color:var(--muted);
+  opacity:.7;
+}
+
+@media(max-width:600px) {
+  .payment-range-filter > * { flex:1 1 auto; }
+  .payment-range-title { flex-basis:100%; }
+  .payment-range-filter input { width:auto; min-width:110px; }
 }
 
 #activity-period, #attendance-period {
