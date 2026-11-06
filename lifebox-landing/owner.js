@@ -174,7 +174,7 @@
       const member = activityAttendance.find(a => a.member_id === Number(memberId));
       if (!member) return;
       attendanceMember = {id:Number(memberId),name:member.full_name,page:1};
-      $('#attendance-period').value = $('#activity-period').value;
+      $('#attendance-period').value = 'all';
       $('#attendance-title').textContent = `تردد ${member.full_name}`;
       dialog.showModal();
     }
@@ -191,7 +191,7 @@
       const data = await api(`${apiRoot}/attendance/${attendanceMember.id}?${new URLSearchParams({page,period})}`);
       if (requestId !== attendanceRequest || !dialog.open) return;
       attendanceMember.page = data.page;
-      $('#attendance-range').textContent = `${formatDate(data.start)} تا ${formatDate(data.end)} · ساعت تهران`;
+      $('#attendance-range').textContent = `${data.period === 'all' ? 'همهٔ سوابق تا '+formatDate(data.end) : `${formatDate(data.start)} تا ${formatDate(data.end)}`} · ساعت تهران`;
       $('#attendance-summary').textContent = data.attendanceAvailable ? `${number(data.visitCount)} مراجعه ثبت‌شده` : 'سوابق حضور در دسترس نیست.';
       $('#attendance-sync').textContent = data.syncedAt ? `آخرین دریافت از باشگاه: ${formatDate(data.syncedAt)} · ${clock(data.syncedAt)}` : '';
       $('#attendance-history').innerHTML = data.attendance.map((a,i) => `<tr><td>${number((data.page-1)*data.pageSize+i+1)}</td><td>${html(stamp(a.checked_in_at))}</td><td>${a.checked_out_at ? html(stamp(a.checked_out_at)) : '<span class="status-badge active">داخل باشگاه</span>'}</td></tr>`).join('') || empty(3,data.attendanceAvailable ? 'در این بازه مراجعه‌ای ثبت نشده است.' : 'سوابق حضور هنوز دریافت نشده است.');

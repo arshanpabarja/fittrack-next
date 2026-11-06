@@ -4,7 +4,7 @@ import re
 import sqlite3
 import tempfile
 from contextlib import closing
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from functools import wraps
 from pathlib import Path
 
@@ -242,8 +242,8 @@ def activity(request):
 @require_http_methods(['GET'])
 def member_attendance(request, member_id):
     from .attendance_reports import attendance_report
-    period = request.GET.get('period', 'month')
-    if period not in {'today', 'month'}:
+    period = request.GET.get('period', 'all')
+    if period not in {'today', 'month', 'all'}:
         return error('بازه معتبر نیست.')
     try:
         page = int(request.GET.get('page', '1'))
@@ -252,7 +252,7 @@ def member_attendance(request, member_id):
     except ValueError:
         return error('شماره صفحه معتبر نیست.')
     today = timezone.localdate()
-    start = today if period == 'today' else today.replace(day=1)
+    start = date.min if period == 'all' else today if period == 'today' else today.replace(day=1)
     end = today + timedelta(days=1)
     report = attendance_report(start, end, member_id=member_id, page=page, page_size=50)
     return JsonResponse(dict(ok=True, memberId=member_id, period=period, start=start.isoformat(), end=today.isoformat(), **report))
