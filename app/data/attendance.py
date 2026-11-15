@@ -54,7 +54,7 @@ class AttendanceRepository:
             )
             connection.commit()
 
-    def check_in(self, member, timestamp):
+    def check_in(self, member, timestamp, grace_allowance=None):
         with self.database.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             active = connection.execute(
@@ -84,7 +84,7 @@ class AttendanceRepository:
             )
             connection.execute(
                 "INSERT INTO sync_outbox (event_type, payload_json) VALUES ('increment_session', ?)",
-                (json.dumps({"member_id": member.id}),),
+                (json.dumps({"member_id": member.id, "grace_allowance": grace_allowance}),),
             )
             connection.commit()
         return attendance_id, locker_id

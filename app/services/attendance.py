@@ -4,7 +4,7 @@ from datetime import datetime
 
 from app.domain.dates import normalize_membership_datetime, membership_expired
 from app.domain.errors import FitTrackError, MembershipExpired
-from app.domain.membership import remaining_sessions
+from app.domain.membership import remaining_sessions, session_allowance
 from app.domain.models import AttendanceResult
 
 
@@ -37,7 +37,13 @@ class AttendanceService:
             expired = membership_expired(current.signup_time)
         except ValueError as exc:
             raise FitTrackError("تاریخ ثبت‌نام معتبر نیست؛ برای اصلاح تاریخ به مدیر مراجعه کنید.") from exc
-        if expired:
+        remaining_before = remaining_sessions(current.plan, current.used_sessions)
+        if expired and (
+            self.membership_repository is None
+            or remaining_before is None
+            or remaining_before < 0
+            or self.membership_repository.grace_started_at(current.id)
+        ):
             raise MembershipExpired(current.id)
         member = replace(
             member,
@@ -47,15 +53,15 @@ class AttendanceService:
             used_sessions=current.used_sessions,
             signup_time=current.signup_time,
         )
-        remaining_before = remaining_sessions(member.plan, member.used_sessions)
-        if remaining_before is not None and remaining_before <= -5:
+        if not expired and remaining_before is not None and remaining_before <= -5:
             raise FitTrackError(
                 "پنج جلسه مهلت این عضو تمام شده است. ابتدا عضویت او را تمدید کنید."
             )
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        _, locker_id = self.repository.check_in(member, timestamp)
+        grace_allowance = session_allowance(member.plan) if expired else None
+        _, locker_id = self.repository.check_in(member, timestamp, grace_allowance=grace_allowance)
         self._flush_outbox()
-        member = replace(member, used_sessions=member.used_sessions + 1)
+        member = replace(member, used_sessions=max(member.used_sessions + 1, grace_allowance + 1) if expired else member.used_sessions + 1)
         if member.remaining_sessions is not None and member.remaining_sessions < 0:
             if self.membership_repository is not None:
                 self.membership_repository.begin_grace(
@@ -83,7 +89,9 @@ class AttendanceService:
             try:
                 payload = json.loads(event["payload_json"])
                 if event["event_type"] == "increment_session":
-                    self.members_repository.increment_used_sessions(payload["member_id"])
+                    self.members_repository.increment_used_sessions(
+                        payload["member_id"], payload.get("grace_allowance")
+                    )
                 self.repository.mark_outbox_processed(event["id"])
             except Exception as exc:
                 self.repository.mark_outbox_error(event["id"], exc)

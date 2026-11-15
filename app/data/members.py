@@ -197,15 +197,15 @@ class MembersRepository:
                 """
             ).fetchall()
 
-    def increment_used_sessions(self, member_id):
+    def increment_used_sessions(self, member_id, grace_allowance=None):
         with self.database.connect() as connection:
             cursor = connection.execute(
                 """
                 UPDATE users
-                SET used_sessions = COALESCE(used_sessions, 0) + 1
+                SET used_sessions = MAX(COALESCE(used_sessions, 0) + 1, COALESCE(?, -1) + 1)
                 WHERE id = ?
                 """,
-                (int(member_id),),
+                (int(grace_allowance) if grace_allowance is not None else None, int(member_id)),
             )
             if cursor.rowcount != 1:
                 raise RecordNotFound("عضو موردنظر برای ثبت جلسه پیدا نشد.")

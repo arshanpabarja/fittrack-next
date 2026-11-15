@@ -14,15 +14,20 @@ class ExpiryTests(unittest.TestCase):
                              used, 0, "1405-06-01 10:00:00", "", "", "", None, "مرد", 100)
 
     def test_calendar_month_boundaries_and_end_of_year(self):
-        self.assertEqual(membership_expires_at("2026-08-23 10:00:00"), "1405-07-01 10:00:00")
-        self.assertEqual(membership_expires_at("1405/06/31 10:15"), "1405-07-30 10:15:00")
+        self.assertEqual(membership_expires_at("2026-08-23 10:00:00"), "1405-07-01 00:00:00")
+        self.assertEqual(membership_expires_at("1405/06/31 10:15"), "1405-07-30 00:00:00")
+        self.assertEqual(membership_expires_at("1405-07-20 14:00:00"), "1405-08-20 00:00:00")
         self.assertEqual(membership_expires_at("1400/11/30"), "1400-12-29 00:00:00")
         self.assertEqual(membership_expires_at("1399/11/30"), "1399-12-30 00:00:00")
         self.assertEqual(membership_expires_at("1404/12/29"), "1405-01-29 00:00:00")
-        with patch("app.domain.dates.jalali_now", return_value="1405-07-01 09:59:59"):
+        with patch("app.domain.dates.jalali_now", return_value="1405-06-30 23:59:59"):
             self.assertFalse(membership_expired("1405-06-01 10:00:00"))
-        with patch("app.domain.dates.jalali_now", return_value="1405-07-01 10:00:00"):
+        with patch("app.domain.dates.jalali_now", return_value="1405-07-01 00:00:00"):
             self.assertTrue(membership_expired("1405-06-01 10:00:00"))
+        with patch("app.domain.dates.jalali_now", return_value="1405-08-19 23:59:59"):
+            self.assertFalse(membership_expired("1405-07-20 14:00:00"))
+        with patch("app.domain.dates.jalali_now", return_value="1405-08-20 00:00:00"):
+            self.assertTrue(membership_expired("1405-07-20 14:00:00"))
 
     @patch("app.domain.dates.jalali_now", return_value="1405-07-01 10:00:00")
     def test_expired_positive_and_negative_sessions_are_blocked_without_mutation(self, clock):
@@ -42,13 +47,13 @@ class ExpiryTests(unittest.TestCase):
 
     @patch("app.domain.dates.jalali_now", return_value="1405-07-01 10:00:00")
     @patch("app.services.members.jalali_now", return_value="1405-07-01 10:00:00")
-    def test_expired_renewal_starts_now_without_carrying_unused_sessions(self, *mocks):
+    def test_expired_renewal_uses_grace_start_when_sessions_were_carried(self, *mocks):
         for used, expected_carried in ((2, 0), (14, 2)):
             repository, history, pos = Mock(), Mock(), Mock()
             repository.get.return_value = self.member(used)
             history.grace_started_at.return_value = "1405-06-20 10:00:00"
             pos.charge.return_value = PaymentReceipt(True, 100, "123", "ok")
             result = MemberService(repository, history, pos).renew_member(1, "پلن ۱۲ جلسه", 100)
-            self.assertEqual(result.membership_started_at, "1405-07-01 10:00:00")
+            self.assertEqual(result.membership_started_at, "1405-06-20 10:00:00" if expected_carried else "1405-07-01 10:00:00")
             self.assertEqual(result.carried_sessions, expected_carried)
             self.assertEqual(repository.renew_membership.call_args.kwargs['carried_sessions'], expected_carried)

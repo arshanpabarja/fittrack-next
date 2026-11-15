@@ -148,6 +148,41 @@ class AttendanceTests(unittest.TestCase):
             normalize_membership_datetime(result.occurred_at),
         )
 
+    def test_expired_membership_allows_one_negative_visit_then_requires_renewal(self):
+        from app.domain.errors import MembershipExpired
+        from app.domain.models import PaymentReceipt
+        from app.services.members import MemberService
+
+        with closing(sqlite3.connect(self.members_path)) as connection:
+            connection.execute(
+                "UPDATE users SET plan = ?, signup_time = ?, used_sessions = 2 WHERE id = 1",
+                ("بدنسازی ۱۲ جلسه در ماه", "1405-06-20 14:00:00"),
+            )
+            connection.commit()
+        with patch("app.domain.dates.jalali_now", return_value="1405-07-21 09:00:00"):
+            result = self.service.check_in([1, 0])
+            self.assertEqual(result.member.remaining_sessions, -1)
+            self.assertEqual(self.members.get(1).remaining_sessions, -1)
+            self.assertEqual(self.memberships.grace_started_at(1), normalize_membership_datetime(result.occurred_at))
+            self.service.check_out([1, 0])
+            with self.assertRaises(MembershipExpired):
+                self.service.check_in([1, 0])
+        self.assertEqual(self.attendance.summary()["inside"], 0)
+        grace_start = self.memberships.grace_started_at(1)
+
+        class SuccessfulPos:
+            def charge(self, amount):
+                return PaymentReceipt(True, amount, "TEST-RENEW", "موفق")
+
+        renewed = MemberService(self.members, self.memberships, SuccessfulPos()).renew_member(
+            1, "بدنسازی ۱۲ جلسه در ماه", 100
+        )
+        self.assertEqual(renewed.membership_started_at, grace_start)
+        self.assertEqual(renewed.carried_sessions, 1)
+        self.assertEqual(renewed.member.used_sessions, 1)
+        self.assertEqual(renewed.member.remaining_sessions, 11)
+        self.assertIsNone(self.memberships.grace_started_at(1))
+
     def test_entry_after_five_grace_visits_is_blocked(self):
         with closing(sqlite3.connect(self.members_path)) as connection:
             connection.execute(

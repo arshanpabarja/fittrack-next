@@ -108,14 +108,13 @@ def validate_membership_datetime(value):
 
 
 def membership_expires_at(value):
-    """One Jalali calendar month, clamped to the next month's last day."""
+    """One Jalali calendar month, expiring at the start of the end date."""
     match = DATE_TIME_RE.fullmatch(validate_membership_datetime(value))
     year, month, day = map(int, match.group(1, 2, 3))
     year, month = (year + 1, 1) if month == 12 else (year, month + 1)
-    clock = ':'.join(f'{int(part or 0):02d}' for part in match.group(4, 5, 6))
     while day > 0:
         try:
-            return validate_membership_datetime(f'{year:04d}-{month:02d}-{day:02d} {clock}')
+            return validate_membership_datetime(f'{year:04d}-{month:02d}-{day:02d} 00:00:00')
         except ValueError:
             day -= 1
     raise ValueError('Invalid membership date')
