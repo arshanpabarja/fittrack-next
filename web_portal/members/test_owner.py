@@ -157,3 +157,20 @@ class OwnerTests(TestCase):
         self.assertEqual(len(data['series']), 30)
         self.assertEqual(data['payments'][0]['name'], 'Member One')
         self.assertEqual(data['payments'][0]['at'], '2026-10-01T00:45:00+03:30')
+        self.assertEqual(data['paymentDisplayedTotal'], 300)
+        self.assertEqual(data['paymentDisplayedCount'], 1)
+        self.assertEqual(data['paymentDisplayedTotal'], sum(row['amount'] for row in data['payments']))
+
+    def test_overview_filtered_total_always_matches_visible_payment_rows(self):
+        with closing(sqlite3.connect(self.attendance)) as c:
+            c.execute('CREATE TABLE membership_renewals(id INTEGER,member_id INTEGER,new_plan TEXT,paid_amount INTEGER,payment_reference TEXT,renewed_at TEXT)')
+            c.executemany('INSERT INTO membership_renewals VALUES(?,?,?,?,?,?)', [
+                (1, self.gym.id, self.plan.name, 300, 'receipt-1', '2026-10-01 10:00:00'),
+                (2, self.gym.id, self.plan.name, 450, 'receipt-2', '2026-10-02 10:00:00'),
+                (3, self.gym.id, self.plan.name, 900, 'receipt-3', '2026-09-01 10:00:00'),
+            ])
+            c.commit()
+        data = self.client.get('/api/owner/overview?payment_from=1405-07-09&payment_to=1405-07-10').json()
+        self.assertEqual(data['paymentDisplayedCount'], len(data['payments']))
+        self.assertEqual(data['paymentDisplayedTotal'], sum(row['amount'] for row in data['payments']))
+        self.assertEqual(data['paymentDisplayedTotal'], 750)

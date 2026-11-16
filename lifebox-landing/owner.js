@@ -2,31 +2,52 @@
 (() => {
   const isOwnerPanel = document.body.dataset.panelRole === 'owner';
   const apiRoot = isOwnerPanel ? '/api/owner' : '/api/admin';
-  let remoteSync = false, members = [], plans = [], overview = null, paymentDateRange = null;
+  let remoteSync = false, members = [], plans = [], overview = null, paymentFilter = {type:'all'};
   let editingMember, editingPlan, refreshing = false, refreshPending = false, memberPage = 1;
   let activityAttendance = [], attendanceMember = null, attendanceRequest = 0, activitySearchTimer;
   let memberFilter = 'all', followupFilter = 'expiring';
   const html = escapeHtml;
   const number = value => value == null ? '—' : new Intl.NumberFormat('fa-IR').format(value);
-  const paymentDateValue = selector => {
-    const match = normalizeDigits($(selector)?.value || '').trim().replace(/[._-]/g,'/').match(/^(\d{1,2})\/(\d{1,2})\/(1[234]\d{2})$/);
-    return match ? `${match[3]}/${match[2].padStart(2,'0')}/${match[1].padStart(2,'0')}` : normalizeDigits($(selector)?.value || '').trim();
+  const jalaliToday = () => Object.fromEntries(new Intl.DateTimeFormat('en-US-u-ca-persian', {
+    timeZone:'Asia/Tehran', year:'numeric', month:'numeric', day:'numeric'
+  }).formatToParts(new Date()).filter(part=>['year','month','day'].includes(part.type)).map(part=>[part.type,Number(part.value)]));
+  const paymentMonth = (year,month) => `${year}-${String(month).padStart(2,'0')}`;
+  const previousJalaliMonth = ({year,month}) => month === 1 ? {year:year-1,month:12} : {year,month:month-1};
+  const selectedPaymentDate = prefix => {
+    const year=Number($(`#payment-${prefix}-year`).value),month=Number($(`#payment-${prefix}-month`).value),day=Number($(`#payment-${prefix}-day`).value);
+    return `${year}/${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
   };
-  const formatPaymentDateInput = input => {
-    const before = normalizeDigits(input.value.slice(0,input.selectionStart ?? input.value.length)).replace(/\D/g,'').length;
-    const digits = normalizeDigits(input.value).replace(/\D/g,'').slice(0,8);
-    const formatted = digits.length > 4 ? `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`
-      : digits.length > 2 ? `${digits.slice(0,2)}/${digits.slice(2)}` : digits;
-    input.value = toFa(formatted);
-    const cursor = Math.min(formatted.length,before + (before > 4 ? 2 : before > 2 ? 1 : 0));
-    input.setSelectionRange(cursor,cursor);
+  const paymentFilterLabel = () => {
+    if(paymentFilter.type==='today') return 'امروز';
+    if(paymentFilter.type==='month') return `${JALALI_MONTHS[paymentFilter.month-1]} ${toFa(paymentFilter.year)}`;
+    if(paymentFilter.type==='range') return `${formatDate(paymentFilter.from)} تا ${formatDate(paymentFilter.to)}`;
+    return 'همهٔ پرداخت‌ها';
   };
-  const paymentDateIsValid = value => {
-    const match = value.match(/^(1[234]\d{2})\/(\d{1,2})\/(\d{1,2})$/);
-    if (!match) return false;
-    const month = Number(match[2]), day = Number(match[3]);
-    return month >= 1 && month <= 12 && day >= 1 && day <= (month <= 6 ? 31 : 30);
-  };
+  function setPaymentPreset(type) {
+    const today=jalaliToday();
+    if(type==='today') paymentFilter={type:'today',date:`${today.year}/${String(today.month).padStart(2,'0')}/${String(today.day).padStart(2,'0')}`};
+    else if(type==='current-month') paymentFilter={type:'month',year:today.year,month:today.month,preset:type};
+    else if(type==='previous-month') paymentFilter={type:'month',...previousJalaliMonth(today),preset:type};
+    else paymentFilter={type:'all'};
+    $$('[data-payment-preset]').forEach(button=>{const active=button.dataset.paymentPreset===type;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});
+  }
+  function updatePaymentDayOptions(prefix) {
+    const month=Number($(`#payment-${prefix}-month`).value),select=$(`#payment-${prefix}-day`),selected=Number(select.value)||1;
+    const maximum=month<=6?31:30;
+    select.innerHTML=Array.from({length:maximum},(_,index)=>`<option value="${index+1}">${toFa(index+1)}</option>`).join('');
+    select.value=String(Math.min(selected,maximum));
+  }
+  function setupPaymentDateSelectors() {
+    const today=jalaliToday(),firstYear=today.year-5,lastYear=today.year+1;
+    ['from','to'].forEach(prefix=>{
+      $(`#payment-${prefix}-year`).innerHTML=Array.from({length:lastYear-firstYear+1},(_,index)=>firstYear+index).reverse().map(year=>`<option value="${year}">${toFa(year)}</option>`).join('');
+      $(`#payment-${prefix}-month`).innerHTML=JALALI_MONTHS.map((month,index)=>`<option value="${index+1}">${month}</option>`).join('');
+      $(`#payment-${prefix}-year`).value=String(today.year);$(`#payment-${prefix}-month`).value=String(today.month);
+      updatePaymentDayOptions(prefix);
+      $(`#payment-${prefix}-day`).value=String(prefix==='from'?1:today.day);
+      $(`#payment-${prefix}-month`).addEventListener('change',()=>updatePaymentDayOptions(prefix));
+    });
+  }
   const clock = value => new Date(value).toLocaleTimeString('fa-IR', {timeZone:'Asia/Tehran', hour:'2-digit', minute:'2-digit'});
   const stamp = value => value ? `${formatDate(value)} · ${toFa((value.split('T')[1] || value.split(' ')[1] || '').slice(0,5))}` : '—';
   const empty = (cols, message) => `<tr><td colspan="${cols}" class="empty-state">${html(message)}</td></tr>`;
@@ -118,11 +139,10 @@
     $('#attendance-inside').textContent = m.inside == null ? 'اطلاعات در دسترس نیست' : `${number(m.inside)} نفر در باشگاه`;
     value('#payment-today',m.todayPayments); value('#payment-month',m.monthPayments); value('#payment-debt',m.debt);
     $('#payment-debt-count').textContent = `${number(m.debtMembers)} عضو دارای بدهی`;
-    const rangeFrom = paymentDateRange?.from || '', rangeTo = paymentDateRange?.to || '';
-    const rangeActive = Boolean(paymentDateRange);
-    const rangeLabel = `${rangeFrom ? formatDate(rangeFrom) : 'بدون حد شروع'} تا ${rangeTo ? formatDate(rangeTo) : 'بدون حد پایان'}`;
-    $('#payment-selected-total').textContent = overview.paymentsAvailable ? number(rangeActive ? overview.paymentRangeTotal : overview.paymentTotal) : '—';
-    $('#payment-selected-label').textContent = `${rangeActive ? rangeLabel : 'همهٔ پرداخت‌ها'} · تومان`;
+    const visiblePaymentTotal=overview.payments.reduce((sum,payment)=>sum+Number(payment.amount||0),0),filterLabel=paymentFilterLabel();
+    $('#payment-selected-total').textContent = overview.paymentsAvailable ? number(visiblePaymentTotal) : '—';
+    $('#payment-selected-label').textContent = overview.paymentsAvailable ? `${filterLabel} · ${number(overview.payments.length)} پرداخت` : 'اطلاعات در دسترس نیست';
+    $('#payment-filter-summary').textContent = filterLabel;
     const attention = members.filter(m => matches(m,'attention')).length;
     $('#attention-title').textContent = attention ? `${number(attention)} عضو به پیگیری شما نیاز دارند` : 'همه‌چیز برای ادامه روز آماده است';
     $('#attention-description').textContent = `${number(m.expired)} عضویت پایان‌یافته · ${number(m.expiring)} عضویت رو به پایان · ${number(m.debtMembers)} عضو دارای بدهی${m.unknown ? ` · ${number(m.unknown)} تاریخ نامشخص` : ''}`;
@@ -153,8 +173,9 @@
       const period = $('#activity-period').value;
       const search = $('#activity-search').value.trim();
       const query = new URLSearchParams();
-      if (paymentDateRange?.from) query.set('payment_from',paymentDateRange.from.replaceAll('/','-'));
-      if (paymentDateRange?.to) query.set('payment_to',paymentDateRange.to.replaceAll('/','-'));
+      if (paymentFilter.type==='today') {query.set('payment_from',paymentFilter.date.replaceAll('/','-'));query.set('payment_to',paymentFilter.date.replaceAll('/','-'));}
+      if (paymentFilter.type==='month') query.set('payment_month',paymentMonth(paymentFilter.year,paymentFilter.month));
+      if (paymentFilter.type==='range') {query.set('payment_from',paymentFilter.from.replaceAll('/','-'));query.set('payment_to',paymentFilter.to.replaceAll('/','-'));}
       const overviewQuery = query.size ? `?${query}` : '';
       const [directory,catalog,activity,insights] = await Promise.all([api(`${apiRoot}/members`),isOwnerPanel ? api(`${apiRoot}/plans`) : Promise.resolve({plans:[]}),api(`${apiRoot}/activity?${new URLSearchParams({period,search})}`),api(`${apiRoot}/overview${overviewQuery}`)]);
       remoteSync = Boolean(directory.remoteSync); overview = insights;
@@ -328,17 +349,17 @@
     $('#previous-members').addEventListener('click',()=>{memberPage--;renderMembers();});
     $('#next-members').addEventListener('click',()=>{memberPage++;renderMembers();});
     $('#refresh-owner').addEventListener('click',refresh);$('#activity-period').addEventListener('change',refresh);
+    setupPaymentDateSelectors();
+    $$('[data-payment-preset]').forEach(button=>button.addEventListener('click',()=>{setPaymentPreset(button.dataset.paymentPreset);$('#payment-custom-range').open=false;refresh();}));
     $('#payment-range-form')?.addEventListener('submit',event=>{
       event.preventDefault();
-      const from = paymentDateValue('#payment-from'), to = paymentDateValue('#payment-to');
-      if (!from && !to) { feedback('حداقل یکی از تاریخ‌های شروع یا پایان را وارد کنید.',true); return; }
-      if ((from && !paymentDateIsValid(from)) || (to && !paymentDateIsValid(to))) { feedback('تاریخ شمسی را به شکل روز/ماه/سال وارد کنید.',true); return; }
+      const from=selectedPaymentDate('from'),to=selectedPaymentDate('to');
       if (from && to && from.replaceAll('/','-') > to.replaceAll('/','-')) { feedback('تاریخ شروع بازه باید قبل از تاریخ پایان باشد.',true); return; }
-      paymentDateRange = {from,to};
+      paymentFilter={type:'range',from,to};
+      $$('[data-payment-preset]').forEach(button=>{button.classList.remove('active');button.setAttribute('aria-pressed','false');});
       refresh();
     });
-    ['#payment-from','#payment-to'].forEach(selector=>$(selector)?.addEventListener('input',event=>formatPaymentDateInput(event.currentTarget)));
-    $('#payment-range-clear')?.addEventListener('click',()=>{ paymentDateRange=null; $('#payment-from').value=''; $('#payment-to').value=''; refresh(); });
+    $('#payment-range-clear')?.addEventListener('click',()=>{setPaymentPreset('all');$('#payment-custom-range').open=false;refresh();});
     $('#activity-search').addEventListener('input',()=>{clearTimeout(activitySearchTimer);activitySearchTimer=setTimeout(refresh,300);});
     $('#attendance-previous').addEventListener('click',()=>openAttendance(attendanceMember.id,attendanceMember.page-1));
     $('#attendance-next').addEventListener('click',()=>openAttendance(attendanceMember.id,attendanceMember.page+1));
@@ -370,8 +391,7 @@
     const resizeObserver=new ResizeObserver(()=>{if(window.innerWidth>760 && $('#owner-sidebar').classList.contains('is-open'))setMenu(false);drawCharts();});resizeObserver.observe($('#owner-content'));
     $('#export-members').addEventListener('click',()=>exportCsv([['نام','نام خانوادگی','موبایل','پلن','وضعیت عضویت','بدهی',...(isOwnerPanel ? ['پرداخت'] : [])],...visibleMembers().map(m=>[m.firstName,m.lastName,m.mobile,m.plan,labels[m.membershipStatus],m.debt,...(isOwnerPanel ? [m.payment] : [])])],'lifebox-members.csv'));
     $('#export-payments').addEventListener('click',()=>{
-      const rangeFrom = paymentDateRange?.from || '', rangeTo = paymentDateRange?.to || '';
-      const period = paymentDateRange ? `${rangeFrom || 'start'}-${rangeTo || 'end'}` : 'all';
+      const period = paymentFilter.type==='range' ? `${paymentFilter.from}-${paymentFilter.to}` : paymentFilter.type==='month' ? paymentMonth(paymentFilter.year,paymentFilter.month) : paymentFilter.type;
       exportCsv([['عضو','پلن','مبلغ','تاریخ','مرجع پرداخت'],...overview.payments.map(p=>[p.name,p.plan,p.amount,p.at,p.reference])],`lifebox-renewal-payments-${period}.csv`);
     });
     await document.fonts.ready;await refresh();

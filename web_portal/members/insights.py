@@ -159,10 +159,13 @@ def build_overview(directory, *, include_financial_totals=True, selected_payment
     elif valid_payment_month:
         payments = [payment for payment in payments
                     if jalali_month_key(datetime.fromisoformat(payment['at'])) == selected_payment_month]
+    payment_displayed_total = sum(payment['amount'] for payment in payments)
     return dict(ok=True, metrics=metrics, members=details, payments=payments,
                 paymentMonths=[dict(month=month, total=total) for month, total in sorted(payment_monthly.items(), reverse=True)] if include_financial_totals else [],
                 paymentRangeTotal=payment_range_total,
                 paymentTotal=payment_total,
+                paymentDisplayedTotal=payment_displayed_total,
+                paymentDisplayedCount=len(payments),
                 series=[dict(date=day.isoformat(), **({'payments': payment_daily[day.isoformat()] if payments_available else None} if include_financial_totals else {}),
                              attendance=attendance_daily[day.isoformat()] if attendance_available else None) for day in days],
                 hours=[dict(hour=hour, count=hours[hour]) for hour in range(6, 24)],
