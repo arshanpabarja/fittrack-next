@@ -7,8 +7,9 @@ DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "012345678901
 
 
 class CoachesService:
-    def __init__(self, api):
+    def __init__(self, api, audit=None):
         self.api = api
+        self.audit = audit
 
     def load(self):
         return self.api.list_plans(), self.api.list_coaches()
@@ -25,9 +26,18 @@ class CoachesService:
             raise ValidationError("رمز عبور باید حداقل ۸ کاراکتر باشد.")
         if not plan_ids:
             raise ValidationError("حداقل یک پلن مجاز انتخاب کنید.")
-        return self.api.save_coach(
+        saved = self.api.save_coach(
             mobile=mobile,
             password=password,
             plan_ids=plan_ids,
             coach_id=coach_id,
         )
+        if self.audit:
+            self.audit.record(
+                "coach_update" if coach_id is not None else "coach_create",
+                entity_type="coach",
+                entity_id=coach_id or getattr(saved, "id", ""),
+                summary=("ویرایش" if coach_id is not None else "ساخت") + f" حساب مربی {mobile}",
+                after={"mobile": mobile, "plan_ids": list(plan_ids)},
+            )
+        return saved

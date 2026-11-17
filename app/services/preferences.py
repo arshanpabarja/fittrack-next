@@ -17,8 +17,9 @@ DEFAULTS = {
 
 
 class PreferencesService:
-    def __init__(self, repository):
+    def __init__(self, repository, audit=None):
         self.repository = repository
+        self.audit = audit
 
     def load(self):
         values = {**DEFAULTS, **self.repository.all()}
@@ -29,6 +30,7 @@ class PreferencesService:
         return values
 
     def save(self, values):
+        before = self.load() if self.audit else None
         api_url = str(values.get("api_url", "")).strip().rstrip("/")
         if not api_url.startswith(("http://", "https://")):
             raise ValidationError("آدرس API باید با http:// یا https:// شروع شود.")
@@ -67,4 +69,13 @@ class PreferencesService:
             "pos_timeout": str(timeout),
             "locker_count": "72",
         }
-        return self.repository.save(cleaned)
+        saved = self.repository.save(cleaned)
+        if self.audit:
+            self.audit.record(
+                "settings_update",
+                entity_type="settings",
+                summary="تغییر تنظیمات برنامه",
+                before=before,
+                after=saved,
+            )
+        return saved

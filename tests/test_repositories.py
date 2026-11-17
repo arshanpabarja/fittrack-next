@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
+from unittest.mock import patch
 from app.domain.dates import jalali_now
 
 from app.data.manager import ManagerRepository
@@ -213,6 +214,76 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(result.member.remaining_sessions, 9)
         self.assertEqual(result.member.signup_time, "1405-05-19 09:15:00")
         self.assertIsNone(memberships.grace_started_at(1))
+        self.assertEqual(len(memberships.renewal_history(1)), 1)
+
+    def test_approved_payment_is_recovered_without_charging_pos_twice(self):
+        class CountingPos:
+            def __init__(self):
+                self.calls = 0
+
+            def charge(self, amount):
+                self.calls += 1
+                return PaymentReceipt(True, amount, "RECOVER-ONCE", "موفق")
+
+        repository = MembersRepository(self.members_path)
+        memberships = MembershipRepository(Path(self.temp.name) / "state.db")
+        pos = CountingPos()
+        service = MemberService(repository, memberships, pos)
+        real_complete = memberships.complete_renewal
+        with patch.object(
+            memberships,
+            "complete_renewal",
+            side_effect=RuntimeError("simulated history write failure"),
+        ):
+            with self.assertRaisesRegex(ValidationError, "پرداخت تأیید شد"):
+                service.renew_member(1, "بدنسازی ۱۲ جلسه در ماه", 2_500_000)
+
+        self.assertEqual(pos.calls, 1)
+        self.assertEqual(repository.get(1).payment, 2_500_000)
+        self.assertEqual(len(memberships.renewal_history(1)), 0)
+        self.assertEqual(len(memberships.recoverable_renewals()), 1)
+
+        memberships.complete_renewal = real_complete
+        self.assertEqual(service.recover_incomplete_renewals(), 1)
+        self.assertEqual(pos.calls, 1)
+        self.assertEqual(len(memberships.renewal_history(1)), 1)
+
+    def test_pos_receipt_survives_state_database_failure_after_charge(self):
+        class CountingPos:
+            def __init__(self):
+                self.calls = 0
+
+            def charge(self, amount):
+                self.calls += 1
+                return PaymentReceipt(True, amount, "EMERGENCY-RECEIPT", "موفق")
+
+        repository = MembersRepository(self.members_path)
+        memberships = MembershipRepository(Path(self.temp.name) / "state.db")
+        pos = CountingPos()
+        service = MemberService(repository, memberships, pos)
+        real_mark = memberships.mark_payment_approved
+        with patch.object(
+            memberships,
+            "mark_payment_approved",
+            side_effect=RuntimeError("database is locked"),
+        ):
+            with self.assertRaisesRegex(ValidationError, "رسید اضطراری"):
+                service.renew_member(1, "بدنسازی ۱۲ جلسه در ماه", 2_500_000)
+
+        self.assertEqual(pos.calls, 1)
+        self.assertTrue(memberships.emergency_path.is_file())
+        self.assertEqual(repository.get(1).payment, 100)
+
+        memberships.mark_payment_approved = real_mark
+        self.assertEqual(service.recover_incomplete_renewals(), 1)
+        self.assertEqual(pos.calls, 1)
+        self.assertFalse(memberships.emergency_path.exists())
+        self.assertEqual(repository.get(1).payment, 2_500_000)
+        self.assertEqual(len(memberships.renewal_history(1)), 1)
+        self.assertEqual(len(memberships.recoverable_renewals()), 0)
+
+        # Recovery is idempotent and cannot create a duplicate history row.
+        self.assertEqual(service.recover_incomplete_renewals(), 0)
         self.assertEqual(len(memberships.renewal_history(1)), 1)
 
 

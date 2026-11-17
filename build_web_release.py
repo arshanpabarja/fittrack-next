@@ -16,7 +16,8 @@ def release_files():
     files = list((ROOT / 'web_portal').rglob('*.py'))
     files = [path for path in files if '__pycache__' not in path.parts]
     files += [ROOT / 'app' / name for name in (
-        '__init__.py', 'domain/__init__.py', 'domain/dates.py', 'domain/membership.py')]
+        '__init__.py', 'domain/__init__.py', 'domain/dates.py', 'domain/membership.py',
+        'core/__init__.py', 'core/license_public_key.py', 'core/update_security.py')]
     files += [ROOT / 'lifebox-landing' / (page + '.html') for page in PAGES]
     files += [ROOT / 'lifebox-landing' / name for name in (
         'app.js', 'styles.css', 'owner.js', 'owner.css', 'coach.js', 'coach.css', 'member.js', 'member.css', 'robots.txt', 'sitemap.xml', 'PRODUCTION.md')]

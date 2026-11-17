@@ -33,6 +33,9 @@ class DesktopReleaseTests(unittest.TestCase):
             distribution = root / "compiled"
             distribution.mkdir()
             (distribution / "LifeBox.exe").write_bytes(b"compiled binary")
+            updater = root / "build" / "desktop-updater"
+            updater.mkdir(parents=True)
+            (updater / "LifeBoxUpdater.exe").write_bytes(b"compiled updater")
             (distribution / "certifi").mkdir()
             (distribution / "certifi" / "cacert.pem").write_text("public CA bundle")
             (distribution / "codex-rejected-cas.pem").write_text("public CA policy")
@@ -41,6 +44,7 @@ class DesktopReleaseTests(unittest.TestCase):
             with zipfile.ZipFile(archive) as release:
                 self.assertEqual(set(release.namelist()), {
                     "LifeBox/LifeBox.exe", "LifeBox/README.txt", "LifeBox/Library/driver.dll",
+                    "LifeBox/LifeBoxUpdater.exe",
                     "LifeBox/certifi/cacert.pem",
                     "LifeBox/codex-rejected-cas.pem",
                 })
@@ -54,6 +58,9 @@ class DesktopReleaseTests(unittest.TestCase):
                 distribution = root / "compiled"
                 distribution.mkdir()
                 (distribution / "LifeBox.exe").write_bytes(b"binary")
+                updater = root / "build" / "desktop-updater"
+                updater.mkdir(parents=True)
+                (updater / "LifeBoxUpdater.exe").write_bytes(b"updater")
                 secret = distribution / name
                 secret.parent.mkdir(parents=True, exist_ok=True)
                 secret.write_text("never ship")

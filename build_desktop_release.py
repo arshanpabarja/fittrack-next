@@ -59,10 +59,25 @@ def compiler_command():
     return command
 
 
+def updater_compiler_command():
+    return [
+        sys.executable, "-m", "nuitka", "--mode=onefile",
+        "--python-flag=isolated", "--progress-bar=none",
+        "--windows-console-mode=disable", "--windows-icon-from-ico=icon.ico",
+        "--output-filename=LifeBoxUpdater.exe",
+        "--output-dir=build/desktop-updater", "--assume-yes-for-downloads",
+        "desktop_updater.py",
+    ]
+
+
 def stage_runtime_files(distribution):
     distribution = Path(distribution)
     if not (distribution / "LifeBox.exe").is_file():
         raise RuntimeError("Compiled LifeBox.exe was not found.")
+    updater = ROOT / "build" / "desktop-updater" / "LifeBoxUpdater.exe"
+    if not updater.is_file():
+        raise RuntimeError("Compiled LifeBoxUpdater.exe was not found.")
+    shutil.copy2(updater, distribution / "LifeBoxUpdater.exe")
     # DLLs are explicitly staged after compilation (Nuitka data-dir flags omit
     # executable libraries). No database, state, source, or owner tool is copied.
     library = distribution / "Library"
@@ -75,7 +90,8 @@ def stage_runtime_files(distribution):
         "Keep your club's database folder beside this folder, or set FITTRACK_DATA_DIR.\n"
         "On first launch, enter the application password supplied by the owner.\n"
         "Activation is checked at every launch and works offline.\n"
-        "Keep state/ and database/ when updating an existing installation.\n"
+        "Runtime state, logs, and database stay outside the version folder.\n"
+        "Use the in-app update button for future signed releases.\n"
         "Camera and payment terminal drivers still need installation on the target PC.\n",
         encoding="utf-8",
     )
@@ -100,6 +116,8 @@ def smoke_check(distribution):
         environment = os.environ.copy()
         environment["QT_QPA_PLATFORM"] = "offscreen"
         environment["FITTRACK_RELEASE_CHECK_DIAGNOSTIC"] = str(diagnostic)
+        environment["FITTRACK_RUNTIME_DIR"] = str(distribution.resolve())
+        environment["FITTRACK_DATA_DIR"] = str((distribution / "database").resolve())
         try:
             subprocess.run(
                 [str(distribution.resolve() / "LifeBox.exe"), "--check-desktop-release"],
@@ -114,7 +132,7 @@ def smoke_check(distribution):
         state.rmdir()
 
 
-def package_release(distribution):
+def package_release(distribution, destination=None):
     distribution = Path(distribution)
     stage_runtime_files(distribution)
     files = sorted(path for path in distribution.rglob("*") if path.is_file())
@@ -128,7 +146,9 @@ def package_release(distribution):
             raise RuntimeError(f"Release contains forbidden source or private data: {relative}")
         if path.name.lower().startswith(".env") or any(part.lower() in {"state", "logs", "database", ".license-owner", ".git", "tools", "web_portal"} for part in relative.parts):
             raise RuntimeError(f"Release contains forbidden directory: {relative}")
-    destination = ROOT / "dist" / "lifebox-desktop.zip"
+    destination = Path(destination) if destination else ROOT / "dist" / "lifebox-desktop.zip"
+    if not destination.is_absolute():
+        destination = ROOT / destination
     destination.parent.mkdir(exist_ok=True)
     temporary = destination.with_suffix(".tmp")
     try:
@@ -144,6 +164,7 @@ def package_release(distribution):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--package-only", action="store_true", help="Package an already compiled release")
+    parser.add_argument("--output", type=Path, help="Optional versioned ZIP destination")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("Build the Windows release on Windows.")
@@ -169,10 +190,11 @@ def build(args):
         environment["TMP"] = str(temporary)
         environment["TEMP"] = str(temporary)
         subprocess.run(compiler_command(), cwd=ROOT, env=environment, check=True)
+        subprocess.run(updater_compiler_command(), cwd=ROOT, env=environment, check=True)
     distribution = ROOT / "build" / "desktop" / "launch.dist"
     stage_runtime_files(distribution)
     smoke_check(distribution)
-    print(package_release(distribution))
+    print(package_release(distribution, args.output))
 
 
 if __name__ == "__main__":

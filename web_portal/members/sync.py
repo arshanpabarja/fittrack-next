@@ -20,9 +20,10 @@ FIELDS = {
     'attendance': set('member_id full_name mobile plan checked_in_at checked_out_at locker_id'.split()),
     'renewal': set('member_id previous_plan new_plan carried_sessions membership_started_at paid_amount payment_reference renewed_at'.split()),
 }
+OPTIONAL_FIELDS = {'renewal': {'transaction_id'}}
 NUMBERS = set('age used_sessions debt payment price sessions_per_month member_id locker_id carried_sessions paid_amount'.split())
 BOOLEANS = {'face_registered', 'is_active'}
-NULLABLE = set('father_name national_id certificate_no address age checked_out_at locker_id'.split())
+NULLABLE = set('father_name national_id certificate_no address age checked_out_at locker_id transaction_id'.split())
 
 
 def validate(record):
@@ -33,7 +34,10 @@ def validate(record):
         raise ValueError('شناسه رکورد معتبر نیست.')
     if data is None:
         return
-    if not isinstance(data, dict) or set(data) != FIELDS[kind]:
+    allowed_sets = {frozenset(FIELDS[kind])}
+    if kind in OPTIONAL_FIELDS:
+        allowed_sets.add(frozenset(FIELDS[kind] | OPTIONAL_FIELDS[kind]))
+    if not isinstance(data, dict) or frozenset(data) not in allowed_sets:
         raise ValueError('فیلدهای همگام‌سازی معتبر نیست.')
     for field, value in data.items():
         if value is None and field in NULLABLE:

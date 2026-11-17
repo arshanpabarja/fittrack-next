@@ -20,9 +20,10 @@ def _number(value):
 class PlansService:
     """Manage the live, local Life Box plan catalog without requiring Django."""
 
-    def __init__(self, api, local_path):
+    def __init__(self, api, local_path, audit=None):
         self.api = api
         self.local_path = Path(local_path)
+        self.audit = audit
 
     def _read_local(self):
         try:
@@ -69,7 +70,7 @@ class PlansService:
                 ))
         return tuple(plans)
 
-    def save(self, values, plan_id=None, *, create_id=None):
+    def save(self, values, plan_id=None, *, create_id=None, audit_actor=None):
         name = re.sub(r"\s+", " ", str(values.get("name", ""))).strip()
         if len(name) < 3:
             raise ValidationError("نام پلن باید حداقل سه کاراکتر باشد.")
@@ -91,6 +92,7 @@ class PlansService:
             raise ValidationError("جنسیت پلن معتبر نیست.")
 
         plans = list(self.load())
+        previous = next((plan for plan in plans if plan.id == int(plan_id)), None) if plan_id is not None else None
         if plan_id is None:
             saved_id = int(create_id) if create_id is not None else max((plan.id for plan in plans), default=0) + 1
             if saved_id <= 0 or any(plan.id == saved_id for plan in plans):
@@ -111,11 +113,25 @@ class PlansService:
         if plan_id is None:
             plans.append(saved)
         self._write_local(plans)
+        if self.audit:
+            self.audit.record(
+                "plan_update" if previous else "plan_create",
+                actor=audit_actor,
+                entity_type="plan",
+                entity_id=saved.id,
+                summary=("ویرایش" if previous else "ساخت") + f" پلن «{saved.name}»",
+                before=previous,
+                after=saved,
+            )
         return saved
 
     def apply_remote(self, plan_id, values, *, create=False):
         """Apply an authenticated website command while preserving its shared ID."""
-        return self.save(values, create_id=plan_id) if create else self.save(values, plan_id=plan_id)
+        return (
+            self.save(values, create_id=plan_id, audit_actor="سیستم/سرور")
+            if create
+            else self.save(values, plan_id=plan_id, audit_actor="سیستم/سرور")
+        )
 
     def _write_local(self, plans):
         existing = self._read_local()

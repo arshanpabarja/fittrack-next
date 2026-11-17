@@ -11,7 +11,9 @@ class SqliteDatabase:
     @contextmanager
     def connect(self, *, readonly=False, max_query_ms=None):
         if readonly:
-            uri = f"file:{self.path.resolve().as_posix()}?mode=ro"
+            # ``Path.as_uri`` produces the required file:///C:/... form on
+            # Windows and safely escapes spaces/non-ASCII path components.
+            uri = f"{self.path.resolve().as_uri()}?mode=ro"
             connection = sqlite3.connect(uri, uri=True, timeout=3)
         else:
             connection = sqlite3.connect(self.path, timeout=8)

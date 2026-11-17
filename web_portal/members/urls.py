@@ -1,13 +1,15 @@
 from django.urls import path, re_path
 from django.views.generic import RedirectView
 
-from . import views, owner, sync, coaching, member_panel, password_reset
+from . import views, owner, sync, coaching, member_panel, password_reset, telemetry
 
 
 urlpatterns = [
     path('robots.txt', views.public_file, {'name': 'robots.txt', 'content_type': 'text/plain; charset=utf-8'}),
     path('sitemap.xml', views.public_file, {'name': 'sitemap.xml', 'content_type': 'application/xml; charset=utf-8'}),
     path('api/desktop/sync', sync.sync_api),
+    path('api/desktop/telemetry', telemetry.telemetry_api),
+    path('api/desktop/releases/<int:release_id>/download', telemetry.download_release),
     path('api/owner/members', owner.members),
     path('api/owner/members/<str:source>/<int:member_id>', owner.member),
     path('api/owner/activity', owner.activity),

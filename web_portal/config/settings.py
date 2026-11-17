@@ -131,6 +131,8 @@ STATIC_URL = '/static/'
 # collecting the whole landing directory would also publish HTML and server code.
 STATICFILES_DIRS = []
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_ROOT = Path(os.getenv('FITTRACK_MEDIA_ROOT', str(BASE_DIR.parent / 'media')))
+MEDIA_URL = '/media/'
 
 AUTH_USER_MODEL = 'members.User'
 LOGIN_URL = '/login'

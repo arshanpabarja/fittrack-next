@@ -8,6 +8,7 @@ application_root = Path(__file__).resolve().parent
 shared_data_dir = Path(os.getenv("FITTRACK_DATA_DIR", application_root.parent / "database")).resolve()
 os.environ.setdefault("FITTRACK_ROOT", str(application_root))
 os.environ.setdefault("FITTRACK_DATA_DIR", str(shared_data_dir))
+os.environ.setdefault("FITTRACK_RUNTIME_DIR", str(shared_data_dir.parent))
 
 from app.bootstrap import run
 

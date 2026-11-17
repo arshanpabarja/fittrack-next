@@ -14,12 +14,15 @@ from app.ui.pages.settings import SettingsPage
 from app.ui.pages.coaches import CoachesPage
 from app.ui.pages.walk_in import WalkInSignupPage
 from app.ui.pages.admin import AdminPanelPage
+from app.ui.pages.audit import ManagerAuditPage
+from app.ui.pages.updates import DesktopUpdatesPage
+from app.ui.pages.recovery import RenewalRecoveryPage
 from app.ui.widgets import Sidebar, TopBar
 from app.ui.workers import TaskWorker
 
 
 class MainWindow(QMainWindow):
-    PROTECTED_PAGES = {"members", "coaches", "reports", "settings", "admin"}
+    PROTECTED_PAGES = {"members", "coaches", "reports", "settings", "admin", "audit", "recovery", "updates"}
     PUBLIC_PAGES = {"dashboard", "attendance", "walk_in", "pending", "manager_login"}
 
     def __init__(self, settings, services):
@@ -131,6 +134,20 @@ class MainWindow(QMainWindow):
         attendance.completed.connect(self._attendance_completed)
         self._register("attendance", attendance)
         self._register("reports", ReportsPage(self.services.reports, self.pool))
+        self._register("audit", ManagerAuditPage(self.services.audit, self.pool))
+        self._register(
+            "recovery",
+            RenewalRecoveryPage(self.services.members, self.pool),
+        )
+        self._register(
+            "updates",
+            DesktopUpdatesPage(
+                self.services.telemetry,
+                self.services.updater,
+                self.services.audit,
+                self.pool,
+            ),
+        )
         self._register("coaches", CoachesPage(self.services.coaches, self.pool))
         admin = AdminPanelPage(self.services.reports, self.services.plans, self.pool)
         admin.navigation_requested.connect(self.navigate)
@@ -192,11 +209,25 @@ class MainWindow(QMainWindow):
         if self.cloud_busy:
             return
         self.cloud_busy = True
-        worker = TaskWorker(self.services.cloud_sync.run)
+        worker = TaskWorker(self._sync_and_report)
         worker.signals.succeeded.connect(lambda _: self.statusBar().showMessage('اتصال سایت: آخرین بررسی موفق بود'))
+        worker.signals.succeeded.connect(lambda _: self.pages["updates"].render_release())
         worker.signals.failed.connect(lambda _: self.statusBar().showMessage('اتصال سایت: ارسال انجام نشد؛ تلاش مجدد خودکار انجام می‌شود'))
         worker.signals.finished.connect(self._cloud_finished)
         self.pool.start(worker)
+
+    def _sync_and_report(self):
+        sync_error = None
+        result = None
+        try:
+            result = self.services.cloud_sync.run()
+        except Exception as exc:
+            sync_error = exc
+        if self.services.telemetry:
+            self.services.telemetry.run()
+        if sync_error:
+            raise sync_error
+        return result
 
     def _cloud_finished(self):
         self.cloud_busy = False
@@ -215,12 +246,19 @@ class MainWindow(QMainWindow):
     def _manager_authenticated(self, username):
         self.session.manager_authenticated = True
         self.session.manager_username = username
+        self.services.audit.set_actor(username)
         self.sidebar.set_manager(username)
         destination = self.pending_page
         self.pending_page = "dashboard"
         self.navigate(destination)
 
     def _clear_manager_session(self):
+        if self.session.manager_authenticated:
+            self.services.audit.record(
+                "manager_logout",
+                summary="خروج از بخش مدیریت",
+            )
+        self.services.audit.set_actor()
         self.session.manager_authenticated = False
         self.session.manager_username = ""
         self.sidebar.set_manager()
@@ -239,8 +277,10 @@ class MainWindow(QMainWindow):
 
 
 class Services:
-    def __init__(self, *, dashboard, members, auth, pending, enrollment, attendance, reports, preferences, coaches, walk_in, plans, camera_indices, cloud_sync=None):
+    def __init__(self, *, dashboard, members, auth, pending, enrollment, attendance, reports, preferences, coaches, walk_in, plans, audit, camera_indices, cloud_sync=None, telemetry=None, updater=None):
         self.cloud_sync = cloud_sync
+        self.telemetry = telemetry
+        self.updater = updater
         self.dashboard = dashboard
         self.members = members
         self.auth = auth
@@ -252,4 +292,5 @@ class Services:
         self.coaches = coaches
         self.walk_in = walk_in
         self.plans = plans
+        self.audit = audit
         self.camera_indices = camera_indices

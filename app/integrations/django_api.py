@@ -4,6 +4,7 @@ import certifi
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from app.domain.errors import FitTrackError
@@ -71,6 +72,57 @@ class DjangoApiClient:
         if not data.get("ok"):
             raise DjangoApiError(data.get("message") or "درخواست سایت انجام نشد.")
         return data
+
+    def telemetry(self, payload):
+        return self._request("POST", "/api/desktop/telemetry", payload)
+
+    def download_release(self, url, destination, expected_size):
+        target = urlsplit(str(url))
+        base = urlsplit(self.base_url)
+        if (
+            target.scheme != "https"
+            or target.scheme != base.scheme
+            or target.netloc != base.netloc
+            or target.username
+            or target.password
+        ):
+            raise DjangoApiError("آدرس دانلود نسخه جدید معتبر نیست.")
+        request = Request(
+            url,
+            headers={
+                "Accept": "application/zip",
+                "Authorization": f"Bearer {self.token}",
+            },
+            method="GET",
+        )
+        destination = Path(destination)
+        temporary = destination.with_suffix(destination.suffix + ".part")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        received = 0
+        try:
+            with urlopen(request, timeout=max(self.timeout, 30), context=self.ssl_context) as response:
+                length = response.headers.get("Content-Length")
+                if length and int(length) != int(expected_size):
+                    raise DjangoApiError("اندازه فایل نسخه جدید با اطلاعات سرور یکسان نیست.")
+                with temporary.open("wb") as stream:
+                    while True:
+                        chunk = response.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        received += len(chunk)
+                        if received > int(expected_size):
+                            raise DjangoApiError("حجم فایل نسخه جدید بیش از مقدار اعلام‌شده است.")
+                        stream.write(chunk)
+            if received != int(expected_size):
+                raise DjangoApiError("دانلود نسخه جدید ناقص است.")
+            temporary.replace(destination)
+            return destination
+        except (HTTPError, URLError, TimeoutError, OSError, ValueError) as exc:
+            if isinstance(exc, DjangoApiError):
+                raise
+            raise DjangoApiError("دانلود نسخه جدید انجام نشد.") from exc
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def list_pending(self, mobile=""):
         query = urlencode({"mobile": mobile.strip()}) if mobile.strip() else ""

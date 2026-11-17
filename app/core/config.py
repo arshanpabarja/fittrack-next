@@ -40,11 +40,14 @@ def load_settings():
     load_cloud_config(package_root)
     root = Path(os.getenv("FITTRACK_ROOT", package_root)).resolve()
     data_dir = Path(os.getenv("FITTRACK_DATA_DIR", root / "database")).resolve()
+    runtime_dir = Path(
+        os.getenv("FITTRACK_RUNTIME_DIR", data_dir.parent)
+    ).resolve()
     return Settings(
         project_root=root,
         data_dir=data_dir,
         assets_dir=root / "assets",
-        log_dir=package_root / "logs",
+        log_dir=runtime_dir / "logs",
         django_base_url=os.getenv(
             "FITTRACK_API_URL", "http://192.168.100.95:8000"
         ).rstrip("/"),

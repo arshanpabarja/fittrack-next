@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtGui import QFont, QFontDatabase
+from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QMessageBox
 
 from app.core.config import load_settings
@@ -14,6 +15,8 @@ from app.data.memberships import MembershipRepository
 from app.data.enrollments import EnrollmentRepository
 from app.data.attendance import AttendanceRepository
 from app.data.preferences import PreferencesRepository
+from app.data.audit import AuditRepository
+from app.data.telemetry import TelemetryRepository
 from app.integrations.django_api import DjangoApiClient
 from app.integrations.pos import create_pos_terminal
 from app.integrations.access_control import SimulatedAccessController
@@ -29,6 +32,9 @@ from app.services.coaches import CoachesService
 from app.services.walk_in import WalkInSignupService
 from app.services.plans import PlansService
 from app.services.cloud_sync import CloudSyncService
+from app.services.audit import AuditService
+from app.services.telemetry import TelemetryService
+from app.services.updater import UpdateService
 from app.ui.main_window import MainWindow, Services
 from app.ui.activation import ensure_activation
 
@@ -41,10 +47,12 @@ def _exception_hook(exc_type, exc_value, exc_traceback):
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
 
-def build_services(settings):
+def build_services(settings, telemetry_repository=None):
     members_repository = MembersRepository(settings.members_database)
+    audit_service = AuditService(AuditRepository(settings.state_database))
     preferences_service = PreferencesService(
-        PreferencesRepository(settings.state_database)
+        PreferencesRepository(settings.state_database),
+        audit_service,
     )
     runtime = preferences_service.load()
     camera_indices = tuple(
@@ -61,11 +69,34 @@ def build_services(settings):
     )
     membership_repository = MembershipRepository(settings.state_database)
     pos_terminal = create_pos_terminal(runtime)
-    plans_service = PlansService(api, settings.data_dir / "plans.json")
+    plans_service = PlansService(api, settings.data_dir / "plans.json", audit_service)
     cloud_sync = None
+    telemetry = None
+    updater = None
     if os.getenv('FITTRACK_CLOUD_SYNC') == '1':
         cloud_sync = CloudSyncService(api, settings.members_database, settings.state_database,
                                       plans_service, os.getenv('FITTRACK_SYNC_SOURCE', ''), workflows)
+        telemetry = TelemetryService(
+            api,
+            telemetry_repository or TelemetryRepository(settings.state_database),
+            os.getenv('FITTRACK_SYNC_SOURCE', ''),
+            settings.state_database,
+            cloud_sync.queue_path,
+        )
+        updater = UpdateService(
+            api,
+            telemetry,
+            settings.project_root,
+            settings.log_dir.parent,
+        )
+    member_service = MemberService(
+        members_repository,
+        membership_repository,
+        pos_terminal,
+        api,
+        audit_service,
+    )
+    member_service.recover_incomplete_renewals()
     return Services(
         dashboard=DashboardService(
             settings.members_database,
@@ -73,13 +104,8 @@ def build_services(settings):
             settings.single_session_database,
             current_attendance=attendance_repository,
         ),
-        members=MemberService(
-            members_repository,
-            membership_repository,
-            pos_terminal,
-            api,
-        ),
-        auth=AuthService(ManagerRepository(settings.manager_database)),
+        members=member_service,
+        auth=AuthService(ManagerRepository(settings.manager_database), audit_service),
         pending=PendingApplicationsService(api),
         enrollment=EnrollmentService(
             api,
@@ -97,15 +123,18 @@ def build_services(settings):
         ),
         reports=ReportsService(attendance_repository),
         preferences=preferences_service,
-        coaches=CoachesService(api),
+        coaches=CoachesService(api, audit_service),
         walk_in=WalkInSignupService(
             settings.data_dir / "plans.json",
             members_repository,
             pos_terminal,
         ),
         plans=plans_service,
+        audit=audit_service,
         camera_indices=camera_indices,
         cloud_sync=cloud_sync,
+        telemetry=telemetry,
+        updater=updater,
     )
 
 
@@ -131,13 +160,28 @@ def run():
         from app.core.release_check import run_release_check
         return run_release_check(app, package_root)
     settings = load_settings()
-    configure_logging(settings.log_dir)
+    telemetry_repository = TelemetryRepository(settings.state_database)
+    configure_logging(settings.log_dir, telemetry_repository)
     if not settings.data_dir.is_dir():
         QMessageBox.critical(None, "لایف‌باکس", f"پوشهٔ دیتابیس باشگاه پیدا نشد:\n{settings.data_dir}")
         return 1
-    window = MainWindow(settings, build_services(settings))
+    window = MainWindow(settings, build_services(settings, telemetry_repository))
     if os.getenv("FITTRACK_WINDOWED", "").strip().lower() in {"1", "true", "yes"}:
         window.show()
     else:
         window.showFullScreen()
+    def write_update_marker():
+        try:
+            marker_index = sys.argv.index("--update-marker") + 1
+            marker = Path(sys.argv[marker_index])
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            temporary = marker.with_suffix(".tmp")
+            temporary.write_text("ready", encoding="utf-8")
+            os.replace(temporary, marker)
+        except (ValueError, IndexError, OSError):
+            logging.getLogger(__name__).exception("Could not write post-update health marker")
+    if "--update-marker" in sys.argv:
+        # Let the Qt event loop and initial widgets settle before declaring the
+        # new release healthy to the external updater.
+        QTimer.singleShot(1_000, write_update_marker)
     return app.exec()

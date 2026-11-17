@@ -363,6 +363,87 @@ class GymRemoteCommand(models.Model):
         ordering = ['id']
 
 
+class DesktopDevice(models.Model):
+    source = models.CharField(max_length=80, primary_key=True)
+    app_version = models.CharField(max_length=40, blank=True)
+    platform = models.CharField(max_length=120, blank=True)
+    state_size = models.PositiveBigIntegerField(default=0)
+    free_disk = models.PositiveBigIntegerField(default=0)
+    database_ok = models.BooleanField(default=True)
+    pending_sync = models.PositiveIntegerField(default=0)
+    process_id = models.PositiveIntegerField(default=0)
+    last_seen_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-last_seen_at']
+
+    def __str__(self):
+        return self.source
+
+
+class DesktopLogEvent(models.Model):
+    device = models.ForeignKey(
+        DesktopDevice, on_delete=models.CASCADE, related_name='log_events'
+    )
+    local_id = models.PositiveBigIntegerField()
+    level = models.CharField(max_length=20)
+    logger = models.CharField(max_length=200)
+    message = models.TextField()
+    occurred_at = models.DateTimeField()
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-occurred_at', '-id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['device', 'local_id'], name='unique_desktop_log_event'
+            )
+        ]
+
+
+class DesktopRelease(models.Model):
+    version = models.CharField(max_length=40, unique=True)
+    notes = models.TextField(blank=True)
+    package = models.FileField(upload_to='desktop-releases/%Y/%m/')
+    sha256 = models.CharField(max_length=64)
+    signature = models.TextField(
+        help_text='امضای Ed25519 فایل manifest؛ نسخه بدون امضای معتبر منتشر نشود.'
+    )
+    package_size = models.PositiveBigIntegerField(default=0)
+    is_published = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return self.version
+
+
+class DesktopUpdateAttempt(models.Model):
+    class Status(models.TextChoices):
+        DOWNLOADING = 'downloading', 'در حال دانلود'
+        INSTALLING = 'installing', 'در حال نصب'
+        SUCCEEDED = 'succeeded', 'موفق'
+        FAILED = 'failed', 'ناموفق'
+        ROLLED_BACK = 'rolled_back', 'بازگشت به نسخه قبلی'
+
+    device = models.ForeignKey(
+        DesktopDevice, on_delete=models.CASCADE, related_name='update_attempts'
+    )
+    release = models.ForeignKey(
+        DesktopRelease, on_delete=models.CASCADE, related_name='attempts'
+    )
+    status = models.CharField(max_length=20, choices=Status.choices)
+    error = models.CharField(max_length=1000, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-updated_at', '-id']
+
+
 class MemberWorkout(models.Model):
     """Member-entered results, separate from the coach's immutable prescription."""
     member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='workout_logs')

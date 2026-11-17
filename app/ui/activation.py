@@ -1,3 +1,7 @@
+import os
+import shutil
+from pathlib import Path
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog, QHBoxLayout, QLabel, QLineEdit,
@@ -62,10 +66,26 @@ class ActivationDialog(QDialog):
         self.accept()
 
 
+def stable_state_dir(root):
+    root = Path(root).resolve()
+    runtime = Path(os.getenv("FITTRACK_RUNTIME_DIR", root)).resolve()
+    destination = runtime / "state"
+    destination.mkdir(parents=True, exist_ok=True)
+    legacy = root / "state"
+    if legacy != destination and legacy.is_dir():
+        # One-time, recoverable migration: preserve the old copy and never
+        # overwrite a newer stable file.
+        for source in legacy.iterdir():
+            target = destination / source.name
+            if source.is_file() and not target.exists():
+                shutil.copy2(source, target)
+    return destination
+
+
 def ensure_activation(root):
     try:
         password_configuration()
-        store = LicenseStore(root / "state" / "activation.lic", current_device_id())
+        store = LicenseStore(stable_state_dir(root) / "activation.lic", current_device_id())
     except LicenseError as exc:
         QMessageBox.critical(None, "فعال‌سازی لایف‌باکس", str(exc))
         return False
